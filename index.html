@@ -14,17 +14,60 @@
       overflow-x: hidden;
     }
 
+    /* Top Hidden Trigger Area */
+    .top-trigger-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 32px;
+      z-index: 999;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      cursor: pointer;
+    }
+
+    .top-handle-pill {
+      width: 48px;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.22);
+      border-radius: 4px;
+      margin-top: 8px;
+      transition: all 0.25s ease;
+    }
+
+    .top-trigger-bar:hover .top-handle-pill {
+      background: rgba(255, 255, 255, 0.6);
+      width: 68px;
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+    }
+
     .app-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 18px 24px;
-      background: rgba(14, 17, 24, 0.85);
-      border-bottom: 1px solid var(--card-border);
-      backdrop-filter: blur(12px);
-      position: sticky;
-      top: 0;
-      z-index: 100;
+      padding: 16px 24px;
+      background: rgba(14, 17, 24, 0.92);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      z-index: 1000;
+      transform: translateY(-100%);
+      opacity: 0;
+      pointer-events: none;
+      transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+    }
+
+    .app-header.visible {
+      transform: translateY(0);
+      opacity: 1;
+      pointer-events: auto;
     }
 
     .scheme-nav {
@@ -109,7 +152,12 @@
 </head>
 <body>
 
-  <!-- Top Tab Switcher (Red Box 1) -->
+  <!-- Top Hidden Trigger Area -->
+  <div class="top-trigger-bar" id="topTrigger" title="点击展开方案选择">
+    <div class="top-handle-pill"></div>
+  </div>
+
+  <!-- Top Tab Switcher (Auto hides after 3s) -->
   <header class="app-header">
     <div class="scheme-nav" id="masterTabs">
       <button class="nav-tab active" data-target="viewScheme1">
@@ -302,7 +350,8 @@
       const views = document.querySelectorAll('.scheme-view');
 
       navTabs.forEach(tab => {
-        tab.addEventListener('click', () => {
+        tab.addEventListener('click', (e) => {
+          e.stopPropagation();
           navTabs.forEach(t => t.classList.remove('active'));
           views.forEach(v => v.classList.remove('active-view'));
 
@@ -310,7 +359,63 @@
           const targetId = tab.getAttribute('data-target');
           const targetView = document.getElementById(targetId);
           if (targetView) targetView.classList.add('active-view');
+          
+          resetHideTimer();
         });
+      });
+
+      // Top Hidden Header: Click top to show, auto disappear after 3s
+      const header = document.querySelector('.app-header');
+      const trigger = document.getElementById('topTrigger');
+      let hideTimer = null;
+
+      function showHeader() {
+        header.classList.add('visible');
+        resetHideTimer();
+      }
+
+      function hideHeader() {
+        header.classList.remove('visible');
+        if (hideTimer) {
+          clearTimeout(hideTimer);
+          hideTimer = null;
+        }
+      }
+
+      function resetHideTimer() {
+        if (hideTimer) clearTimeout(hideTimer);
+        hideTimer = setTimeout(() => {
+          hideHeader();
+        }, 3000);
+      }
+
+      // Clicking the top trigger bar shows header
+      if (trigger) {
+        trigger.addEventListener('click', (e) => {
+          e.stopPropagation();
+          showHeader();
+        });
+      }
+
+      // Clicking the top boundary area (<= 36px) also shows header
+      window.addEventListener('click', (e) => {
+        if (e.clientY <= 36) {
+          showHeader();
+        } else if (!header.contains(e.target) && e.target !== trigger) {
+          hideHeader();
+        }
+      });
+
+      // Restart 3s timer when interacting with the header
+      header.addEventListener('mouseenter', () => {
+        if (hideTimer) clearTimeout(hideTimer);
+      });
+      header.addEventListener('mouseleave', () => {
+        resetHideTimer();
+      });
+      header.addEventListener('click', (e) => {
+        e.stopPropagation();
+        resetHideTimer();
       });
 
       // Initialize Controllers for the 3 devices
