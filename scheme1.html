@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Momcozy TW03 - 方案一体验Demo (单数显+点阵火苗)</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand-section">
+      <span class="brand-logo">momcozy</span>
+      <span class="product-tag">TW03 毛巾加热桶</span>
+      <span style="color: #6c758d; font-size: 14px; margin-left: 8px;">方案一：单数显 + LED点阵火苗 + 复合键</span>
+    </div>
+    <div class="scheme-nav">
+      <a href="scheme1.html" class="nav-tab active">方案一</a>
+      <a href="scheme2.html" class="nav-tab">方案二</a>
+      <a href="scheme3.html" class="nav-tab">方案三</a>
+      <a href="index.html" class="nav-tab">三方案对比</a>
+    </div>
+    <div class="header-actions">
+      <button class="btn-icon" id="btnSound" title="声音开/关">🔊</button>
+      <a href="index.html" class="btn-icon" title="返回主页">🏠</a>
+    </div>
+  </header>
+
+  <main class="app-container">
+    <!-- Interactive Device Viewport -->
+    <div class="stage-container">
+      <div class="device-wrapper" id="scheme1Device">
+        <img class="device-bg" src="images/设备面板.png" alt="Momcozy TW03 设备面板">
+
+        <div class="device-touch-layer">
+          <!-- Time & Temp Selection Tabs -->
+          <div class="pos-time-tab" id="s1TabTime">
+            <div class="tab-label">Time</div>
+            <div class="tab-indicator-line"></div>
+          </div>
+          <div class="pos-temp-tab" id="s1TabTemp">
+            <div class="tab-label active">Temp</div>
+            <div class="tab-indicator-line active"></div>
+          </div>
+
+          <!-- Status Icons -->
+          <img class="status-icon s1-icon-wifi active" src="images/名称=wifi.svg" alt="Wifi">
+          <img class="status-icon s1-icon-alarm" src="images/名称=闹铃.svg" alt="Alarm">
+          <img class="status-icon s1-icon-ion" src="images/名称=离子加热.svg" alt="Ion">
+          <img class="status-icon s1-icon-f active" src="images/名称=华氏度.svg" alt="°F">
+          <img class="status-icon s1-icon-c" src="images/名称=摄氏度.svg" alt="°C">
+          <img class="status-icon s1-icon-lock" src="images/名称=童锁.svg" alt="Lock">
+
+          <!-- 7-Segment Digital Display -->
+          <div class="s1-digits"></div>
+
+          <!-- Flame + Dot Matrix Indicator -->
+          <div class="s1-indicator-bar">
+            <div class="dots-group">
+              <div class="indicator-dot" data-idx="0"></div>
+              <div class="indicator-dot" data-idx="1"></div>
+              <div class="indicator-dot" data-idx="2"></div>
+              <div class="indicator-dot" data-idx="3"></div>
+            </div>
+            <img class="indicator-flame" src="images/指示灯小火苗.svg" alt="Flame">
+            <div class="dots-group">
+              <div class="indicator-dot" data-idx="4"></div>
+              <div class="indicator-dot" data-idx="5"></div>
+              <div class="indicator-dot" data-idx="6"></div>
+              <div class="indicator-dot" data-idx="7"></div>
+            </div>
+          </div>
+
+          <!-- Adjust Buttons -->
+          <div class="btn-touch btn-adjust-left" id="s1BtnMinus" title="减少参数">
+            <img src="images/减号.svg" alt="-" style="width:100%;height:100%;">
+          </div>
+          <div class="btn-touch btn-adjust-right" id="s1BtnPlus" title="增加参数">
+            <img src="images/加号.svg" alt="+" style="width:100%;height:100%;">
+          </div>
+
+          <!-- Bottom Control Row -->
+          <!-- Left: Composite Key -->
+          <div class="btn-touch btn-composite-key" id="s1BtnComp" title="时间/温度复合切换 (长按切换单位)">
+            <img src="images/时间:温度icon/状态=半亮.svg" alt="Time/Temp" style="width:100%;height:100%;">
+          </div>
+
+          <!-- Center: Heat-Dry Pill Bar -->
+          <div class="pill-bar-container">
+            <img class="pill-outline-svg" src="images/Heat-Dry模式pill栏.svg" alt="Pill">
+            <div class="pill-section pill-heat active" id="s1PillHeat">Heat</div>
+            <div class="pill-power-center power-persist" id="s1PillPower" title="短按启动/暂停，长按1.5s开关机">
+              <img src="images/电源启停键尺寸1.svg" alt="Power">
+            </div>
+            <div class="pill-section pill-dry" id="s1PillDry">Dry</div>
+          </div>
+
+          <!-- Right: Baby Mode Key -->
+          <div class="btn-touch btn-baby-key" id="s1BtnBaby" title="宝宝模式 (锁定105°F安全温)">
+            <img src="images/宝宝模式.svg" alt="Baby Mode" style="width:100%;height:100%;">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HUD Control & Status Dock -->
+    <aside class="hud-panel">
+      <div class="hud-header">
+        <div class="hud-title">⚡ 方案一交互状态</div>
+        <div class="hud-subtitle">单屏幕分时切换显示，底部复合键循环切换时/温，火苗点阵波纹动画</div>
+      </div>
+
+      <div class="status-badge-grid">
+        <div class="status-card">
+          <span class="status-card-label">电源状态</span>
+          <span class="status-card-val" id="hudPower">
+            <span class="status-indicator-dot green"></span> 待机中
+          </span>
+        </div>
+        <div class="status-card">
+          <span class="status-card-label">工作模式</span>
+          <span class="status-card-val" id="hudMode">♨️ HEAT (加热)</span>
+        </div>
+        <div class="status-card">
+          <span class="status-card-label">当前显示</span>
+          <span class="status-card-val" id="hudDisplay">🌡️ 温度 (140°F)</span>
+        </div>
+        <div class="status-card">
+          <span class="status-card-label">定时时长</span>
+          <span class="status-card-val" id="hudTime">⏱️ 00:40</span>
+        </div>
+        <div class="status-card">
+          <span class="status-card-label">宝宝模式</span>
+          <span class="status-card-val" id="hudBaby">未激活 (关)</span>
+        </div>
+        <div class="status-card">
+          <span class="status-card-label">单位</span>
+          <span class="status-card-val" id="hudUnit">华氏度 (°F)</span>
+        </div>
+      </div>
+
+      <div class="scenario-section">
+        <span class="section-label">快捷交互体验</span>
+        <div class="action-btn-group">
+          <button class="action-btn" id="actTogglePower">
+            <span>🔘 长按开关机 (1.5s)</span>
+            <kbd>开/关</kbd>
+          </button>
+          <button class="action-btn" id="actStartHeat">
+            <span>▶️ 开始加热 / 暂停</span>
+            <kbd>启动</kbd>
+          </button>
+          <button class="action-btn" id="actCompKey">
+            <span>⏱/🌡 点击复合键切换</span>
+            <kbd>时/温循环</kbd>
+          </button>
+          <button class="action-btn" id="actBaby">
+            <span>👶 开启/关闭宝宝模式</span>
+            <kbd>105°F锁定</kbd>
+          </button>
+          <button class="action-btn" id="actUnit">
+            <span>🔄 切换温度单位 (°F / °C)</span>
+            <kbd>单位转换</kbd>
+          </button>
+        </div>
+      </div>
+
+      <div class="interaction-guide-box">
+        <div class="guide-step">
+          <span class="guide-badge">1</span>
+          <span><strong>复合键切换</strong>：第一次点击切换到时间，第二次切到温度，第三次回时间；5s无操作自动确认退出编辑。</span>
+        </div>
+        <div class="guide-step">
+          <span class="guide-badge">2</span>
+          <span><strong>加热波纹</strong>：点击电源键或启动加热后，中央火苗点亮，两侧8颗点阵灯由内向外循环波纹点亮。</span>
+        </div>
+        <div class="guide-step">
+          <span class="guide-badge">3</span>
+          <span><strong>宝宝模式</strong>：点击右侧婴儿键，icon呈现高亮绿色发光，温度锁定在105°F不可调节。</span>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <script src="script.js"></script>
+  <script>
+    if (window.self !== window.top || location.search.includes('embed=true')) {
+      document.body.classList.add('is-embedded');
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      const deviceEl = document.getElementById('scheme1Device');
+      const hudPower = document.getElementById('hudPower');
+      const hudMode = document.getElementById('hudMode');
+      const hudDisplay = document.getElementById('hudDisplay');
+      const hudTime = document.getElementById('hudTime');
+      const hudBaby = document.getElementById('hudBaby');
+      const hudUnit = document.getElementById('hudUnit');
+
+      const s1 = new Scheme1Controller(deviceEl, (state) => {
+        let pTxt = '待机中';
+        let pClass = 'green';
+        if (state.power === 'off') { pTxt = '已关机'; pClass = ''; }
+        else if (state.power === 'running') { pTxt = '运行加热中...'; pClass = 'orange'; }
+        else if (state.power === 'paused') { pTxt = '已暂停'; pClass = 'gold'; }
+
+        hudPower.innerHTML = `<span class="status-indicator-dot ${pClass}"></span> ${pTxt}`;
+        hudMode.textContent = state.mode === 'heat' ? '♨️ HEAT (加热)' : '💨 DRY (烘干)';
+        hudDisplay.textContent = state.displayMode === 'temp' 
+          ? `🌡️ 温度 (${state.temp}°${state.unit})` 
+          : `⏱️ 时间 (${state.time})`;
+        hudTime.textContent = `⏱️ ${state.time}`;
+        hudBaby.textContent = state.babyMode ? '🟢 已激活 (105°F锁定)' : '⚪ 未激活 (关)';
+        hudBaby.style.color = state.babyMode ? '#52c41a' : '#fff';
+        hudUnit.textContent = state.unit === 'F' ? '华氏度 (°F)' : '摄氏度 (°C)';
+      });
+
+      // Quick Action Buttons
+      document.getElementById('actTogglePower').addEventListener('click', () => s1.toggleOnOff());
+      document.getElementById('actStartHeat').addEventListener('click', () => s1.toggleStartPause());
+      document.getElementById('actCompKey').addEventListener('click', () => s1.cycleCompositeKey());
+      document.getElementById('actBaby').addEventListener('click', () => s1.toggleBabyMode());
+      document.getElementById('actUnit').addEventListener('click', () => s1.toggleUnit());
+
+      // Sound button
+      const soundBtn = document.getElementById('btnSound');
+      soundBtn.addEventListener('click', () => {
+        sound.muted = !sound.muted;
+        soundBtn.textContent = sound.muted ? '🔇' : '🔊';
+        soundBtn.classList.toggle('active', !sound.muted);
+      });
+    });
+  </script>
+</body>
+</html>

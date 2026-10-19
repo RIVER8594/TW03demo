@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Momcozy TW03 - 方案三体验Demo (独立时/温键+嵌入式Baby键+独立电源)</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand-section">
+      <span class="brand-logo">momcozy</span>
+      <span class="product-tag">TW03 毛巾加热桶</span>
+      <span style="color: #6c758d; font-size: 14px; margin-left: 8px;">方案三：双屏数显 + 独立时/温键 + 嵌入式Baby键 + 独立电源键</span>
+    </div>
+    <div class="scheme-nav">
+      <a href="scheme1.html" class="nav-tab">方案一</a>
+      <a href="scheme2.html" class="nav-tab">方案二</a>
+      <a href="scheme3.html" class="nav-tab active">方案三</a>
+      <a href="index.html" class="nav-tab">三方案对比</a>
+    </div>
+    <div class="header-actions">
+      <button class="btn-icon" id="btnSound" title="声音开/关">🔊</button>
+      <a href="index.html" class="btn-icon" title="返回主页">🏠</a>
+    </div>
+  </header>
+
+  <main class="app-container">
+    <!-- Interactive Device Viewport -->
+    <div class="stage-container">
+      <div class="device-wrapper" id="scheme3Device">
+        <img class="device-bg" src="images/设备面板.png" alt="Momcozy TW03 设备面板">
+
+        <div class="device-touch-layer">
+          <!-- Status Icons -->
+          <img class="status-icon s3-icon-wifi active" src="images/名称=wifi.svg" alt="Wifi">
+          <img class="status-icon s3-icon-alarm" src="images/名称=闹铃.svg" alt="Alarm">
+          <img class="status-icon s3-icon-lock" src="images/名称=童锁.svg" alt="Lock">
+          <img class="status-icon s3-icon-ion" src="images/名称=离子加热.svg" alt="Ion">
+
+          <!-- Upper Time Digits -->
+          <div class="digit-display s23-time-digits" title="点击编辑时间"></div>
+
+          <!-- Middle Yellow Divider Line (Sweeping light when running) -->
+          <div class="divider-line-container s3-divider">
+            <div class="divider-static-line"></div>
+            <div class="divider-glow-sweep"></div>
+          </div>
+
+          <!-- Lower Temp Digits -->
+          <div class="digit-display s3-temp-digits" title="点击编辑温度"></div>
+
+          <!-- Temp Units at right of temp digits -->
+          <img class="status-icon s3-icon-f active" src="images/名称=华氏度.svg" alt="°F">
+          <img class="status-icon s3-icon-c" src="images/名称=摄氏度.svg" alt="°C">
+
+          <!-- Adjust Buttons: Standard [-] on left, [+] on right -->
+          <div class="btn-touch s3-adjust-left" id="s3BtnMinus" title="减少参数 [-]">
+            <img src="images/减号.svg" alt="-" style="width:100%;height:100%;">
+          </div>
+          <div class="btn-touch s3-adjust-right" id="s3BtnPlus" title="增加参数 [+]">
+            <img src="images/加号.svg" alt="+" style="width:100%;height:100%;">
+          </div>
+
+          <!-- Control Row 1: Left Single Time Key, Center [Heat | Baby | Dry] Pill, Right Single Temp Key -->
+          <!-- Left: Independent Time Button -->
+          <div class="btn-touch s3-time-btn" id="s3BtnTime" title="点击直接进入时间编辑">
+            <img src="images/icon_单时间.svg" alt="Time Key" style="width:100%;height:100%;">
+          </div>
+
+          <!-- Center Pill: Heat - Baby - Dry -->
+          <div class="pill-bar-container s3-pill-bar">
+            <img class="pill-outline-svg" src="images/Heat-Dry模式pill栏.svg" alt="Pill">
+            <div class="pill-section pill-heat active" id="s3PillHeat">Heat</div>
+            <!-- Embedded Baby Mode in Pill center! -->
+            <div class="pill-baby-center" id="s3PillBaby" title="宝宝模式 (点击锁定105°F安全温)">
+              <img src="images/宝宝模式.svg" alt="Baby">
+            </div>
+            <div class="pill-section pill-dry" id="s3PillDry">Dry</div>
+          </div>
+
+          <!-- Right: Independent Temp Button -->
+          <div class="btn-touch s3-temp-btn" id="s3BtnTemp" title="点击直接进入温度编辑">
+            <img src="images/icon_单温度.svg" alt="Temp Key" style="width:100%;height:100%;">
+          </div>
+
+          <!-- Control Row 2: Standalone Bottom Center Power Button -->
+          <div class="btn-touch s3-power-btn power-persist" id="s3BtnPower" title="短按启动/暂停加热，长按1.5s开关机">
+            <img src="images/电源启停键尺寸2.svg" alt="Power">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HUD Control & Status Dock -->
+    <aside class="hud-panel">
+      <div class="hud-header">
+        <div class="hud-title">⚡ 方案三交互状态</div>
+        <div class="hud-subtitle">双屏数显，左独立时间键、右独立温度键，Baby键嵌入Pill栏中间，底部独立电源圆键</div>
+      </div>
+
+      <div class="status-badge-grid">
+        <div class="status-card">
+          <span class="status-card-label">电源状态</span>
+          <span class="status-card-val" id="hudPower">
+            <span class="status-indicator-dot green"></span> 待机中
+          </span>
+        </div>
+        <div class="status-card">
+          <span class="status-card-label">工作模式</span>
+          <span class="status-card-val" id="hudMode">♨️ HEAT (加热)</span>
+        </div>
+        <div class="status-card">
+          <span class="status-card-label">激活按键</span>
+          <span class="status-card-val" id="hudActiveKey">⚪ 无激活 (常规)</span>
+        </div>
+        <div class="status-card">
+          <span class="status-card-label">宝宝模式</span>
+          <span class="status-card-val" id="hudBaby">未激活 (关)</span>
+        </div>
+        <div class="status-card">
+          <span class="status-card-label">设定温度</span>
+          <span class="status-card-val" id="hudTemp">🌡️ 140°F</span>
+        </div>
+        <div class="status-card">
+          <span class="status-card-label">定时时长</span>
+          <span class="status-card-val" id="hudTime">⏱️ 00:40</span>
+        </div>
+      </div>
+
+      <div class="scenario-section">
+        <span class="section-label">快捷交互体验</span>
+        <div class="action-btn-group">
+          <button class="action-btn" id="actTogglePower">
+            <span>🔘 底部长按开关机 (1.5s)</span>
+            <kbd>开/关</kbd>
+          </button>
+          <button class="action-btn" id="actStartHeat">
+            <span>▶️ 底部短按启动 / 暂停</span>
+            <kbd>加热光轨</kbd>
+          </button>
+          <button class="action-btn" id="actTimeKey">
+            <span>⏱️ 点击左侧【单时间键】</span>
+            <kbd>调时间</kbd>
+          </button>
+          <button class="action-btn" id="actTempKey">
+            <span>🌡️ 点击右侧【单温度键】</span>
+            <kbd>调温度</kbd>
+          </button>
+          <button class="action-btn" id="actBaby">
+            <span>👶 点击Pill中间【Baby键】</span>
+            <kbd>绿色高亮</kbd>
+          </button>
+          <button class="action-btn" id="actUnit">
+            <span>🔄 切换温度单位 (°F / °C)</span>
+            <kbd>单位转换</kbd>
+          </button>
+        </div>
+      </div>
+
+      <div class="interaction-guide-box">
+        <div class="guide-step">
+          <span class="guide-badge">1</span>
+          <span><strong>独立功能键直达</strong>：左下角独立[⏱️时间]键、右下角独立[🌡️温度]键，一键精准唤起对应参数编辑，无需循环翻页。</span>
+        </div>
+        <div class="guide-step">
+          <span class="guide-badge">2</span>
+          <span><strong>嵌入式Baby模式</strong>：婴儿头像融入Pill栏中段，形成[Heat | 👶 | Dry]的聚合模式组，激活时呈现清新绿色光环。</span>
+        </div>
+        <div class="guide-step">
+          <span class="guide-badge">3</span>
+          <span><strong>独立电源键</strong>：位于底部正中央，操作层级最高，短按启停、长按开关机，布局清晰分明。</span>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <script src="script.js"></script>
+  <script>
+    if (window.self !== window.top || location.search.includes('embed=true')) {
+      document.body.classList.add('is-embedded');
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      const deviceEl = document.getElementById('scheme3Device');
+      const hudPower = document.getElementById('hudPower');
+      const hudMode = document.getElementById('hudMode');
+      const hudActiveKey = document.getElementById('hudActiveKey');
+      const hudBaby = document.getElementById('hudBaby');
+      const hudTemp = document.getElementById('hudTemp');
+      const hudTime = document.getElementById('hudTime');
+
+      const s3 = new Scheme3Controller(deviceEl, (state) => {
+        let pTxt = '待机中';
+        let pClass = 'green';
+        if (state.power === 'off') { pTxt = '已关机'; pClass = ''; }
+        else if (state.power === 'running') { pTxt = '加热运行中 (光轨扫光)'; pClass = 'orange'; }
+        else if (state.power === 'paused') { pTxt = '已暂停'; pClass = 'gold'; }
+
+        hudPower.innerHTML = `<span class="status-indicator-dot ${pClass}"></span> ${pTxt}`;
+        hudMode.textContent = state.mode === 'heat' ? '♨️ HEAT (加热)' : '💨 DRY (烘干)';
+        
+        if (state.editMode === 'time') {
+          hudActiveKey.innerHTML = '<span style="color:#60a5fa">⏱️ 左侧单时间键 (编辑中)</span>';
+        } else if (state.editMode === 'temp') {
+          hudActiveKey.innerHTML = '<span style="color:#f59e0b">🌡️ 右侧单温度键 (编辑中)</span>';
+        } else {
+          hudActiveKey.textContent = '⚪ 无激活 (常规显示)';
+        }
+
+        hudBaby.textContent = state.babyMode ? '🟢 已激活 (105°F锁定)' : '⚪ 未激活 (关)';
+        hudBaby.style.color = state.babyMode ? '#52c41a' : '#fff';
+        hudTemp.textContent = state.mode === 'heat' ? `🌡️ ${state.temp}°${state.unit}` : '— — —';
+        hudTime.textContent = `⏱️ ${state.time}`;
+      });
+
+      // Quick Actions
+      document.getElementById('actTogglePower').addEventListener('click', () => s3.toggleOnOff());
+      document.getElementById('actStartHeat').addEventListener('click', () => s3.toggleStartPause());
+      document.getElementById('actTimeKey').addEventListener('click', () => s3.toggleTimeEdit());
+      document.getElementById('actTempKey').addEventListener('click', () => s3.toggleTempEdit());
+      document.getElementById('actBaby').addEventListener('click', () => s3.toggleBabyMode());
+      document.getElementById('actUnit').addEventListener('click', () => s3.toggleUnit());
+
+      // Sound button
+      const soundBtn = document.getElementById('btnSound');
+      soundBtn.addEventListener('click', () => {
+        sound.muted = !sound.muted;
+        soundBtn.textContent = sound.muted ? '🔇' : '🔊';
+        soundBtn.classList.toggle('active', !sound.muted);
+      });
+    });
+  </script>
+</body>
+</html>

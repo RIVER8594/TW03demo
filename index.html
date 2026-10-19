@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Momcozy TW03 毛巾加热桶 - 交互体验Demo</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: radial-gradient(circle at 50% 20%, #171c26 0%, #0a0c10 100%);
+      overflow-x: hidden;
+    }
+
+    .app-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px 24px;
+      background: rgba(14, 17, 24, 0.85);
+      border-bottom: 1px solid var(--card-border);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .scheme-nav {
+      display: flex;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 5px;
+      border-radius: 30px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      gap: 6px;
+    }
+
+    .nav-tab {
+      padding: 9px 22px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.25s ease;
+      border: none;
+      background: transparent;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .nav-tab:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .nav-tab.active {
+      background: linear-gradient(135deg, #3a4254 0%, #242a38 100%);
+      color: #ffffff;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.25);
+    }
+
+    .app-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .stage-container {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      padding: 0;
+      box-shadow: none;
+      min-height: auto;
+    }
+
+    .device-wrapper {
+      width: 100%;
+      max-width: 960px;
+      aspect-ratio: 4080 / 2910;
+      border-radius: 36px;
+      overflow: hidden;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7), 0 0 1px 1px rgba(255, 255, 255, 0.08);
+      background: #e6e6e6;
+    }
+
+    .scheme-view {
+      display: none;
+      width: 100%;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .scheme-view.active-view {
+      display: flex;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Tab Switcher (Red Box 1) -->
+  <header class="app-header">
+    <div class="scheme-nav" id="masterTabs">
+      <button class="nav-tab active" data-target="viewScheme1">
+        <span>1️⃣ 方案一 (单数显+点阵)</span>
+      </button>
+      <button class="nav-tab" data-target="viewScheme2">
+        <span>2️⃣ 方案二 (双屏+动态键)</span>
+      </button>
+      <button class="nav-tab" data-target="viewScheme3">
+        <span>3️⃣ 方案三 (双屏+独立键)</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Interactive Device Stage (Red Box 2) -->
+  <!-- ==================== VIEW 1: SCHEME 1 ==================== -->
+  <main class="app-container scheme-view active-view" id="viewScheme1">
+    <div class="stage-container">
+      <div class="device-wrapper" id="devS1">
+        <img class="device-bg" src="images/设备面板.png" alt="Momcozy TW03">
+        <div class="device-touch-layer">
+          <!-- Time & Temp Tabs -->
+          <div class="pos-time-tab" id="s1TabTime">
+            <div class="tab-label">Time</div>
+            <div class="tab-indicator-line"></div>
+          </div>
+          <div class="pos-temp-tab" id="s1TabTemp">
+            <div class="tab-label active">Temp</div>
+            <div class="tab-indicator-line active"></div>
+          </div>
+
+          <!-- Status Icons -->
+          <img class="status-icon s1-icon-wifi active" src="images/名称=wifi.svg" alt="Wifi">
+          <img class="status-icon s1-icon-alarm" src="images/名称=闹铃.svg" alt="Alarm">
+          <img class="status-icon s1-icon-ion" src="images/名称=离子加热.svg" alt="Ion">
+          <img class="status-icon s1-icon-f active" src="images/名称=华氏度.svg" alt="°F">
+          <img class="status-icon s1-icon-c" src="images/名称=摄氏度.svg" alt="°C">
+          <img class="status-icon s1-icon-lock" src="images/名称=童锁.svg" alt="Lock">
+
+          <!-- 7-Segment Digits -->
+          <div class="s1-digits"></div>
+
+          <!-- Indicator Flame + Outward Ripple Dots -->
+          <div class="s1-indicator-bar">
+            <div class="dots-group">
+              <div class="indicator-dot"></div>
+              <div class="indicator-dot"></div>
+              <div class="indicator-dot"></div>
+              <div class="indicator-dot"></div>
+            </div>
+            <img class="indicator-flame" src="images/指示灯小火苗.svg" alt="Flame">
+            <div class="dots-group">
+              <div class="indicator-dot"></div>
+              <div class="indicator-dot"></div>
+              <div class="indicator-dot"></div>
+              <div class="indicator-dot"></div>
+            </div>
+          </div>
+
+          <!-- Adjust Buttons -->
+          <div class="btn-touch btn-adjust-left" id="s1BtnMinus"><img src="images/减号.svg" alt="-"></div>
+          <div class="btn-touch btn-adjust-right" id="s1BtnPlus"><img src="images/加号.svg" alt="+"></div>
+
+          <!-- Composite Key -->
+          <div class="btn-touch btn-composite-key" id="s1BtnComp"><img src="images/时间:温度icon/状态=半亮.svg" alt="Comp"></div>
+
+          <!-- Pill Bar -->
+          <div class="pill-bar-container">
+            <img class="pill-outline-svg" src="images/Heat-Dry模式pill栏.svg" alt="Pill">
+            <div class="pill-section pill-heat active" id="s1PillHeat">Heat</div>
+            <div class="pill-power-center power-persist" id="s1PillPower"><img src="images/电源启停键尺寸1.svg" alt="Power"></div>
+            <div class="pill-section pill-dry" id="s1PillDry">Dry</div>
+          </div>
+
+          <!-- Baby Mode Key -->
+          <div class="btn-touch btn-baby-key" id="s1BtnBaby"><img src="images/宝宝模式.svg" alt="Baby"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ==================== VIEW 2: SCHEME 2 ==================== -->
+  <main class="app-container scheme-view" id="viewScheme2">
+    <div class="stage-container">
+      <div class="device-wrapper" id="devS2">
+        <img class="device-bg" src="images/设备面板.png" alt="Momcozy TW03">
+        <div class="device-touch-layer">
+          <!-- Status Icons -->
+          <img class="status-icon s2-icon-wifi active" src="images/名称=wifi.svg" alt="Wifi">
+          <img class="status-icon s2-icon-alarm" src="images/名称=闹铃.svg" alt="Alarm">
+          <img class="status-icon s2-icon-ion" src="images/名称=离子加热.svg" alt="Ion">
+          <img class="status-icon s2-icon-lock" src="images/名称=童锁.svg" alt="Lock">
+
+          <!-- Upper Time Digits -->
+          <div class="digit-display s23-time-digits"></div>
+
+          <!-- Middle Animated Yellow Sweeping Divider Line -->
+          <div class="divider-line-container s2-divider">
+            <div class="divider-static-line"></div>
+            <div class="divider-glow-sweep"></div>
+          </div>
+
+          <!-- Lower Temp Digits -->
+          <div class="digit-display s2-temp-digits"></div>
+
+          <!-- Temp Units -->
+          <img class="status-icon s2-icon-f active" src="images/名称=华氏度.svg" alt="°F">
+          <img class="status-icon s2-icon-c" src="images/名称=摄氏度.svg" alt="°C">
+
+          <!-- Scheme 2 Adjust Buttons: Left is [-], Right is [+] per Figma -->
+          <div class="btn-touch btn-adjust-left s2-adjust-left" id="s2BtnLeft"><img src="images/减号.svg" alt="-"></div>
+          <div class="btn-touch btn-adjust-right s2-adjust-right" id="s2BtnRight"><img src="images/加号.svg" alt="+"></div>
+
+          <!-- Composite Key -->
+          <div class="btn-touch btn-composite-key s2-composite-key" id="s2BtnComp"><img src="images/时间:温度icon/状态=半亮.svg" alt="Comp"></div>
+
+          <!-- Pill Bar -->
+          <div class="pill-bar-container s2-pill-bar">
+            <img class="pill-outline-svg" src="images/Heat-Dry模式pill栏.svg" alt="Pill">
+            <div class="pill-section pill-heat active" id="s2PillHeat">Heat</div>
+            <div class="pill-power-center power-persist" id="s2PillPower"><img src="images/电源启停键尺寸1.svg" alt="Power"></div>
+            <div class="pill-section pill-dry" id="s2PillDry">Dry</div>
+          </div>
+
+          <!-- Baby Mode Key -->
+          <div class="btn-touch btn-baby-key s2-baby-key" id="s2BtnBaby"><img src="images/宝宝模式.svg" alt="Baby"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ==================== VIEW 3: SCHEME 3 ==================== -->
+  <main class="app-container scheme-view" id="viewScheme3">
+    <div class="stage-container">
+      <div class="device-wrapper" id="devS3">
+        <img class="device-bg" src="images/设备面板.png" alt="Momcozy TW03">
+        <div class="device-touch-layer">
+          <!-- Status Icons -->
+          <img class="status-icon s3-icon-wifi active" src="images/名称=wifi.svg" alt="Wifi">
+          <img class="status-icon s3-icon-alarm" src="images/名称=闹铃.svg" alt="Alarm">
+          <img class="status-icon s3-icon-lock" src="images/名称=童锁.svg" alt="Lock">
+          <img class="status-icon s3-icon-ion" src="images/名称=离子加热.svg" alt="Ion">
+
+          <!-- Upper Time Digits -->
+          <div class="digit-display s23-time-digits"></div>
+
+          <!-- Middle Animated Yellow Sweeping Divider Line -->
+          <div class="divider-line-container s3-divider">
+            <div class="divider-static-line"></div>
+            <div class="divider-glow-sweep"></div>
+          </div>
+
+          <!-- Lower Temp Digits -->
+          <div class="digit-display s3-temp-digits"></div>
+
+          <!-- Temp Units -->
+          <img class="status-icon s3-icon-f active" src="images/名称=华氏度.svg" alt="°F">
+          <img class="status-icon s3-icon-c" src="images/名称=摄氏度.svg" alt="°C">
+
+          <!-- Standard Adjust Buttons -->
+          <div class="btn-touch s3-adjust-left" id="s3BtnMinus"><img src="images/减号.svg" alt="-"></div>
+          <div class="btn-touch s3-adjust-right" id="s3BtnPlus"><img src="images/加号.svg" alt="+"></div>
+
+          <!-- Independent Time Button (Left) -->
+          <div class="btn-touch s3-time-btn" id="s3BtnTime"><img src="images/icon_单时间.svg" alt="Time"></div>
+
+          <!-- Pill Bar with Embedded Baby Key -->
+          <div class="pill-bar-container s3-pill-bar">
+            <img class="pill-outline-svg" src="images/Heat-Dry模式pill栏.svg" alt="Pill">
+            <div class="pill-section pill-heat active" id="s3PillHeat">Heat</div>
+            <div class="pill-baby-center" id="s3PillBaby"><img src="images/宝宝模式.svg" alt="Baby"></div>
+            <div class="pill-section pill-dry" id="s3PillDry">Dry</div>
+          </div>
+
+          <!-- Independent Temp Button (Right) -->
+          <div class="btn-touch s3-temp-btn" id="s3BtnTemp"><img src="images/icon_单温度.svg" alt="Temp"></div>
+
+          <!-- Standalone Circular Power Key (Bottom Center) -->
+          <div class="btn-touch s3-power-btn power-persist" id="s3BtnPower"><img src="images/电源启停键尺寸2.svg" alt="Power"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="script.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Tab Switcher between Scheme 1, 2, and 3
+      const navTabs = document.querySelectorAll('#masterTabs .nav-tab');
+      const views = document.querySelectorAll('.scheme-view');
+
+      navTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          navTabs.forEach(t => t.classList.remove('active'));
+          views.forEach(v => v.classList.remove('active-view'));
+
+          tab.classList.add('active');
+          const targetId = tab.getAttribute('data-target');
+          const targetView = document.getElementById(targetId);
+          if (targetView) targetView.classList.add('active-view');
+        });
+      });
+
+      // Initialize Controllers for the 3 devices
+      const s1 = new Scheme1Controller(document.getElementById('devS1'));
+      const s2 = new Scheme2Controller(document.getElementById('devS2'));
+      const s3 = new Scheme3Controller(document.getElementById('devS3'));
+    });
+  </script>
+</body>
+</html>
