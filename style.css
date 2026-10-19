@@ -402,7 +402,8 @@ body.is-embedded .device-wrapper {
   position: absolute;
   width: 1.32%;
   aspect-ratio: 1;
-  opacity: 0.1;
+  opacity: 0;
+  pointer-events: none;
   transition: opacity 0.25s ease, filter 0.25s ease;
 }
 
