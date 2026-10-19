@@ -879,6 +879,11 @@ body.is-embedded .device-wrapper {
   pointer-events: auto !important;
 }
 
+.device-off .power-persist img {
+  opacity: 1 !important;
+  filter: none !important;
+}
+
 /* ---------------- Sidebar / HUD Panel ---------------- */
 .hud-panel {
   width: 380px;

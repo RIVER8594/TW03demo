@@ -872,7 +872,7 @@ class Scheme1Controller {
 
     if (powerCenter) {
       if (isOff) {
-        powerCenter.style.opacity = '0.35';
+        powerCenter.style.opacity = '0.5';
         powerCenter.classList.remove('active', 'pause-blink');
       } else if (isPaused) {
         powerCenter.style.opacity = '1';
@@ -890,9 +890,14 @@ class Scheme1Controller {
       if (isOff || isRunning) {
         compBtn.style.opacity = '0.05';
         compBtn.style.pointerEvents = 'none';
+        compBtn.style.filter = 'none';
+        compBtn.classList.remove('editing-glow');
       } else {
         compBtn.style.pointerEvents = 'auto';
-        compBtn.style.opacity = (this.editMode === 'temp' || this.editMode === 'time' || this.editMode === 'reservation') ? '1' : '0.45';
+        const isEditing = (this.editMode === 'temp' || this.editMode === 'time' || this.editMode === 'reservation');
+        compBtn.style.opacity = isEditing ? '1' : '0.45';
+        compBtn.style.filter = isEditing ? 'drop-shadow(0 0 10px rgba(255, 255, 255, 0.85))' : 'none';
+        compBtn.classList.toggle('editing-glow', isEditing);
       }
     }
 
@@ -954,6 +959,10 @@ class Scheme1Controller {
       plusBtn.classList.remove('disabled');
       minusBtn.classList.add('active');
       plusBtn.classList.add('active');
+      minusBtn.style.opacity = '';
+      plusBtn.style.opacity = '';
+      minusBtn.style.pointerEvents = '';
+      plusBtn.style.pointerEvents = '';
       return;
     }
 
@@ -961,6 +970,10 @@ class Scheme1Controller {
     if (this.editMode === 'temp') {
       minusBtn.classList.add('active');
       plusBtn.classList.add('active');
+      minusBtn.style.opacity = '';
+      plusBtn.style.opacity = '';
+      minusBtn.style.pointerEvents = '';
+      plusBtn.style.pointerEvents = '';
       if (this.mode === 'dry' || this.babyMode) {
         minusBtn.classList.add('disabled');
         plusBtn.classList.add('disabled');
@@ -976,6 +989,10 @@ class Scheme1Controller {
     if (this.editMode === 'time') {
       minusBtn.classList.add('active');
       plusBtn.classList.add('active');
+      minusBtn.style.opacity = '';
+      plusBtn.style.opacity = '';
+      minusBtn.style.pointerEvents = '';
+      plusBtn.style.pointerEvents = '';
       if (this.babyMode) {
         if (this.mode === 'heat') {
           minusBtn.classList.toggle('disabled', this.babyHeatTimeIndex === 0);
@@ -996,9 +1013,13 @@ class Scheme1Controller {
       return;
     }
 
-    // In normal standby, keep buttons enabled with standard brightness (not active)
+    // In normal standby (non-editing), buttons should be off
     minusBtn.classList.remove('disabled', 'active');
     plusBtn.classList.remove('disabled', 'active');
+    minusBtn.style.opacity = '0';
+    plusBtn.style.opacity = '0';
+    minusBtn.style.pointerEvents = 'none';
+    plusBtn.style.pointerEvents = 'none';
   }
 
   renderTabs(isOff, isRunning) {
