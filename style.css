@@ -226,7 +226,7 @@ body {
 
 .tab-label {
   font-family: 'Montserrat', var(--font-family);
-  font-size: clamp(12px, 1.2vw, 22px);
+  font-size: clamp(12px, 1.35vw, 28px);
   font-weight: 600;
   letter-spacing: -0.5px;
   color: #fff;
@@ -426,11 +426,11 @@ body.is-embedded .device-wrapper {
 .dots-group {
   display: flex;
   align-items: center;
-  gap: clamp(4px, 0.4vw, 12px);
+  gap: clamp(4px, 0.45vw, 14px);
 }
 
 .indicator-dot {
-  width: clamp(3px, 0.42vw, 8px);
+  width: clamp(3px, 0.45vw, 10px);
   aspect-ratio: 1;
   border-radius: 50%;
   background: #ffffff;
@@ -445,7 +445,7 @@ body.is-embedded .device-wrapper {
 }
 
 .indicator-flame {
-  width: clamp(10px, 1.03vw, 20px);
+  width: clamp(10px, 1.2vw, 24px);
   aspect-ratio: 1;
   opacity: 0.25;
   transition: all 0.3s ease;
@@ -655,7 +655,7 @@ body.is-embedded .device-wrapper {
   align-items: center;
   justify-content: center;
   font-family: 'Montserrat', var(--font-family);
-  font-size: clamp(12px, 1.1vw, 20px);
+  font-size: clamp(12px, 1.25vw, 26px);
   font-weight: 600;
   color: #fff;
   opacity: 0.35;
