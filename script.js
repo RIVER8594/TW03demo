@@ -316,28 +316,6 @@ class Scheme1Controller {
       plusBtn.addEventListener('mouseleave', endP);
       plusBtn.addEventListener('touchend', endP);
     }
-
-    // Direct click on tabs
-    const timeTab = this.root.querySelector('.pos-time-tab');
-    if (timeTab) {
-      timeTab.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (this.interceptLockedOrLowPower()) return;
-        if (this.power === 'standby' || this.power === 'paused') {
-          this.enterEditMode('time');
-        }
-      });
-    }
-    const tempTab = this.root.querySelector('.pos-temp-tab');
-    if (tempTab) {
-      tempTab.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (this.interceptLockedOrLowPower()) return;
-        if (this.power === 'standby' || this.power === 'paused') {
-          this.enterEditMode('temp');
-        }
-      });
-    }
   }
 
   // ==================== INTERCEPTION (LOCK & LOW POWER) ====================

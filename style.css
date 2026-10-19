@@ -210,7 +210,9 @@ body {
   top: 39.18%;
   width: 7.11%;
   text-align: center;
-  cursor: pointer;
+  cursor: default;
+  pointer-events: none;
+  user-select: none;
   transition: all 0.2s ease;
 }
 
@@ -220,7 +222,9 @@ body {
   top: 39.18%;
   width: 7.11%;
   text-align: center;
-  cursor: pointer;
+  cursor: default;
+  pointer-events: none;
+  user-select: none;
   transition: all 0.2s ease;
 }
 

@@ -621,8 +621,8 @@
       let hasDragged = false;
 
       window.addEventListener('pointerdown', (e) => {
-        // If clicking on interactive UI buttons, tabs, or header trigger, don't hijack
-        if (e.target.closest('.btn-touch, .nav-tab, #topTrigger, .app-header, .pos-time-tab, .pos-temp-tab')) {
+        // If clicking on interactive UI buttons or header trigger, don't hijack
+        if (e.target.closest('.btn-touch, .nav-tab, #topTrigger, .app-header')) {
           return;
         }
 
