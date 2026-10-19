@@ -94,10 +94,28 @@ const DRY_TIME_PRESETS = [
   '01:00', '02:00', '03:00', '04:00', '05:00'
 ];
 
+const BABY_HEAT_TIME_PRESETS = [
+  '00:15', '00:20', '00:30', '00:40', '00:50',
+  '01:00', '01:10', '01:20', '01:30', '03:00'
+];
+
+const BABY_DRY_TIME_PRESETS = [
+  '00:30', '01:00', '02:00', '03:00', '04:00', '05:00'
+];
+
+const RESERVATION_PRESETS = [
+  '00:30', '01:00', '01:30', '02:00', '02:30', '03:00', '03:30', '04:00',
+  '05:00', '06:00', '08:00', '10:00', '12:00', '16:00', '20:00', '24:00'
+];
+
 const TEMP_PRESETS_F = [120, 140, 160];
 const TEMP_PRESETS_C = [50, 60, 70];
+const DRY_TEMP_F = 210;
+const DRY_TEMP_C = 100;
 const BABY_TEMP_F = 105;
 const BABY_TEMP_C = 40;
+const BABY_DRY_TEMP_F = 180;
+const BABY_DRY_TEMP_C = 82;
 
 // Helper to get digit SVG path
 function getDigitSvg(digit) {
@@ -133,156 +151,310 @@ class Scheme1Controller {
     this.root = rootEl;
     this.onStateChange = onStateChange;
 
-    // State
-    this.power = 'standby'; // 'off', 'standby', 'running', 'paused'
-    this.mode = 'heat'; // 'heat', 'dry'
-    this.displayMode = 'temp'; // 'temp', 'time'
-    this.editMode = 'none'; // 'none', 'temp', 'time'
+    // Core States
+    this.power = 'standby'; // 'off' | 'standby' | 'running' | 'paused' | 'reserved'
+    this.mode = 'heat'; // 'heat' | 'dry'
     this.babyMode = false;
-    this.unit = 'F'; // 'F' or 'C'
-    this.tempIndex = 1; // 140°F
-    this.heatTimeIndex = 2; // 00:40
-    this.dryTimeIndex = 0; // 01:00
-    this.savedPreBabyTempIndex = 1;
+    this.unit = 'F'; // 'F' | 'C'
+    this.childLocked = false;
+    this.isLowPower = false;
 
-    // Countdown / Timers
-    this.remainingSec = 40 * 60;
+    // Edit & Display States
+    this.editMode = 'none'; // 'none' | 'temp' | 'time' | 'reservation'
+    this.standbyParam = 'temp'; // 'temp' | 'time' (3s alternating carousel in standby)
+
+    // Preset Indices (Remembered values)
+    this.tempIndex = 1; // Heat: 140°F / 60°C
+    this.heatTimeIndex = 6; // Heat Time: '01:20'
+    this.dryTimeIndex = 0; // Dry Time: '01:00'
+    this.babyHeatTimeIndex = 4; // Baby Heat Time: '00:50'
+    this.babyDryTimeIndex = 1; // Baby Dry Time: '01:00'
+    this.reserveIndex = 1; // Reservation: '01:00'
+
+    // Timers & Intervals
+    this.remainingSec = 0;
     this.countdownTimer = null;
-    this.inactivityTimer = null;
     this.dotCycle = 0;
     this.dotInterval = null;
+    this.carouselTimer = null;
+    this.inactivityTimer = null;
+    this.lowPowerTimer = null;
+    this.lockWarningTimer = null;
 
-    // Long press detection
+    // Press Timers (Long-press handlers)
     this.powerPressTimer = null;
+    this.powerPressStart = 0;
+    this.heatPressTimer = null;
+    this.heatPressStart = 0;
     this.compPressTimer = null;
+    this.compPressStart = 0;
+    this.babyPressTimer = null;
+    this.babyPressStart = 0;
+
+    // Adjust Continuous Step (+/- continuous press)
+    this.adjustHoldTimer = null;
+    this.adjustStepInterval = null;
 
     this.bindEvents();
+    this.startStandbyCarousel();
+    this.resetLowPowerTimer();
     this.render();
   }
 
+  // Get current temperature value according to mode and unit
   get currentTemp() {
     if (this.babyMode) {
+      if (this.mode === 'dry') {
+        return this.unit === 'F' ? BABY_DRY_TEMP_F : BABY_DRY_TEMP_C;
+      }
       return this.unit === 'F' ? BABY_TEMP_F : BABY_TEMP_C;
+    }
+    if (this.mode === 'dry') {
+      return this.unit === 'F' ? DRY_TEMP_F : DRY_TEMP_C;
     }
     const list = this.unit === 'F' ? TEMP_PRESETS_F : TEMP_PRESETS_C;
     return list[this.tempIndex];
   }
 
+  // Get current time string
   get currentTimeStr() {
-    return this.mode === 'heat' 
-      ? HEAT_TIME_PRESETS[this.heatTimeIndex] 
+    if (this.babyMode) {
+      return this.mode === 'heat'
+        ? BABY_HEAT_TIME_PRESETS[this.babyHeatTimeIndex]
+        : BABY_DRY_TIME_PRESETS[this.babyDryTimeIndex];
+    }
+    return this.mode === 'heat'
+      ? HEAT_TIME_PRESETS[this.heatTimeIndex]
       : DRY_TIME_PRESETS[this.dryTimeIndex];
   }
 
+  // Current reservation string
+  get currentReserveStr() {
+    return RESERVATION_PRESETS[this.reserveIndex];
+  }
+
+  // ==================== EVENT BINDING ====================
   bindEvents() {
-    // Power button in pill center
+    // 1. Power/Start Button in Pill Center
     const powerBtn = this.root.querySelector('.pill-power-center');
     if (powerBtn) {
-      powerBtn.addEventListener('mousedown', (e) => this.handlePowerPressStart(e));
-      powerBtn.addEventListener('touchstart', (e) => this.handlePowerPressStart(e), { passive: true });
-      powerBtn.addEventListener('mouseup', () => this.handlePowerPressEnd());
-      powerBtn.addEventListener('mouseleave', () => this.handlePowerPressEnd());
-      powerBtn.addEventListener('touchend', () => this.handlePowerPressEnd());
+      const startP = (e) => this.handlePowerDown(e);
+      const endP = (e) => this.handlePowerUp(e);
+      powerBtn.addEventListener('mousedown', startP);
+      powerBtn.addEventListener('touchstart', startP, { passive: true });
+      powerBtn.addEventListener('mouseup', endP);
+      powerBtn.addEventListener('mouseleave', endP);
+      powerBtn.addEventListener('touchend', endP);
     }
 
-    // Heat Pill Section
-    const heatSection = this.root.querySelector('.pill-heat');
-    if (heatSection) {
-      heatSection.addEventListener('click', () => this.setMode('heat'));
+    // 2. Heat Button (Click to set mode, Long press 2s in standby to switch unit °F/°C)
+    const heatBtn = this.root.querySelector('.pill-heat');
+    if (heatBtn) {
+      const startH = (e) => this.handleHeatDown(e);
+      const endH = (e) => this.handleHeatUp(e);
+      heatBtn.addEventListener('mousedown', startH);
+      heatBtn.addEventListener('touchstart', startH, { passive: true });
+      heatBtn.addEventListener('mouseup', endH);
+      heatBtn.addEventListener('mouseleave', endH);
+      heatBtn.addEventListener('touchend', endH);
     }
 
-    // Dry Pill Section
-    const drySection = this.root.querySelector('.pill-dry');
-    if (drySection) {
-      drySection.addEventListener('click', () => this.setMode('dry'));
+    // 3. Dry Button
+    const dryBtn = this.root.querySelector('.pill-dry');
+    if (dryBtn) {
+      dryBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (this.interceptLockedOrLowPower()) return;
+        this.selectMode('dry');
+      });
     }
 
-    // Time/Temp Composite Key
+    // 4. Setting (Composite) Key (Click: toggle Temp/Time edit; Long press 2s: Reservation)
     const compBtn = this.root.querySelector('.btn-composite-key');
     if (compBtn) {
-      compBtn.addEventListener('mousedown', (e) => this.handleCompPressStart(e));
-      compBtn.addEventListener('touchstart', (e) => this.handleCompPressStart(e), { passive: true });
-      compBtn.addEventListener('mouseup', (e) => this.handleCompPressEnd(e));
-      compBtn.addEventListener('mouseleave', () => this.clearCompPress());
-      compBtn.addEventListener('touchend', (e) => this.handleCompPressEnd(e));
+      const startC = (e) => this.handleCompDown(e);
+      const endC = (e) => this.handleCompUp(e);
+      compBtn.addEventListener('mousedown', startC);
+      compBtn.addEventListener('touchstart', startC, { passive: true });
+      compBtn.addEventListener('mouseup', endC);
+      compBtn.addEventListener('mouseleave', endC);
+      compBtn.addEventListener('touchend', endC);
     }
 
-    // Baby Mode Key
+    // 5. Baby Button (Click: toggle baby mode; Long press 2s: child lock toggle)
     const babyBtn = this.root.querySelector('.btn-baby-key');
     if (babyBtn) {
-      babyBtn.addEventListener('click', () => this.toggleBabyMode());
+      const startB = (e) => this.handleBabyDown(e);
+      const endB = (e) => this.handleBabyUp(e);
+      babyBtn.addEventListener('mousedown', startB);
+      babyBtn.addEventListener('touchstart', startB, { passive: true });
+      babyBtn.addEventListener('mouseup', endB);
+      babyBtn.addEventListener('mouseleave', endB);
+      babyBtn.addEventListener('touchend', endB);
     }
 
-    // Left [-] Adjust Button
-    const leftBtn = this.root.querySelector('.btn-adjust-left');
-    if (leftBtn) {
-      leftBtn.addEventListener('click', () => this.adjustParam(-1));
+    // 6. Minus [-] Button
+    const minusBtn = this.root.querySelector('.btn-adjust-left');
+    if (minusBtn) {
+      const startM = (e) => this.handleAdjustDown(e, -1);
+      const endM = () => this.handleAdjustUp();
+      minusBtn.addEventListener('mousedown', startM);
+      minusBtn.addEventListener('touchstart', startM, { passive: true });
+      minusBtn.addEventListener('mouseup', endM);
+      minusBtn.addEventListener('mouseleave', endM);
+      minusBtn.addEventListener('touchend', endM);
     }
 
-    // Right [+] Adjust Button
-    const rightBtn = this.root.querySelector('.btn-adjust-right');
-    if (rightBtn) {
-      rightBtn.addEventListener('click', () => this.adjustParam(1));
+    // 7. Plus [+] Button
+    const plusBtn = this.root.querySelector('.btn-adjust-right');
+    if (plusBtn) {
+      const startP = (e) => this.handleAdjustDown(e, 1);
+      const endP = () => this.handleAdjustUp();
+      plusBtn.addEventListener('mousedown', startP);
+      plusBtn.addEventListener('touchstart', startP, { passive: true });
+      plusBtn.addEventListener('mouseup', endP);
+      plusBtn.addEventListener('mouseleave', endP);
+      plusBtn.addEventListener('touchend', endP);
     }
 
-    // Time & Temp direct tabs at top
+    // Direct click on tabs
     const timeTab = this.root.querySelector('.pos-time-tab');
     if (timeTab) {
-      timeTab.addEventListener('click', () => this.switchToDisplay('time'));
+      timeTab.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (this.interceptLockedOrLowPower()) return;
+        if (this.power === 'standby' || this.power === 'paused') {
+          this.enterEditMode('time');
+        }
+      });
     }
     const tempTab = this.root.querySelector('.pos-temp-tab');
     if (tempTab) {
-      tempTab.addEventListener('click', () => this.switchToDisplay('temp'));
+      tempTab.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (this.interceptLockedOrLowPower()) return;
+        if (this.power === 'standby' || this.power === 'paused') {
+          this.enterEditMode('temp');
+        }
+      });
     }
-
-    // Unit toggle on °F / °C click
-    const unitF = this.root.querySelector('.s1-icon-f');
-    const unitC = this.root.querySelector('.s1-icon-c');
-    if (unitF) unitF.addEventListener('click', () => this.toggleUnit());
-    if (unitC) unitC.addEventListener('click', () => this.toggleUnit());
   }
 
-  handlePowerPressStart(e) {
-    this.powerPressStartTime = Date.now();
+  // ==================== INTERCEPTION (LOCK & LOW POWER) ====================
+  interceptLockedOrLowPower(targetKey = '') {
+    // 1. If currently in low power, any click only wakes up the unit without action
+    if (this.isLowPower) {
+      this.wakeUp();
+      sound.playClick();
+      return true;
+    }
+    this.resetLowPowerTimer();
+
+    // 2. If child lock is active, clicking any button triggers warning flash (0.6s on/off)
+    if (this.childLocked && targetKey !== 'babyLongPress') {
+      this.triggerLockWarning();
+      sound.playAlert();
+      return true;
+    }
+    return false;
+  }
+
+  triggerLockWarning() {
+    const lockIcon = this.root.querySelector('.s1-icon-lock');
+    if (!lockIcon) return;
+    lockIcon.classList.add('lock-warning-blink');
+    if (this.lockWarningTimer) clearTimeout(this.lockWarningTimer);
+    this.lockWarningTimer = setTimeout(() => {
+      lockIcon.classList.remove('lock-warning-blink');
+    }, 1800);
+  }
+
+  wakeUp() {
+    this.isLowPower = false;
+    this.root.classList.remove('low-power');
+    this.resetLowPowerTimer();
+  }
+
+  resetLowPowerTimer() {
+    clearTimeout(this.lowPowerTimer);
+    // 5 minutes (300,000 ms) inactivity leads to low-power state per specification
+    this.lowPowerTimer = setTimeout(() => {
+      this.enterLowPower();
+    }, 300000);
+  }
+
+  enterLowPower() {
+    this.isLowPower = true;
+    this.root.classList.add('low-power');
+  }
+
+  // ==================== POWER & START / PAUSE LOGIC ====================
+  handlePowerDown(e) {
+    if (e) e.stopPropagation();
+    if (this.isLowPower) {
+      this.wakeUp();
+      return;
+    }
+    this.powerPressStart = Date.now();
     this.powerLongPressed = false;
+    clearTimeout(this.powerPressTimer);
+
+    // 1.5s long press triggers on/off
     this.powerPressTimer = setTimeout(() => {
       this.powerLongPressed = true;
-      this.toggleOnOff();
-    }, 1200);
+      this.togglePowerOnOff();
+    }, 1500);
   }
 
-  handlePowerPressEnd() {
+  handlePowerUp(e) {
+    if (e) e.stopPropagation();
     clearTimeout(this.powerPressTimer);
-    if (!this.powerLongPressed && Date.now() - this.powerPressStartTime < 1200) {
-      // Short press: Start or Pause
-      this.toggleStartPause();
+    if (this.powerLongPressed) return;
+
+    if (Date.now() - this.powerPressStart < 1500) {
+      // Short click on Power/Start
+      if (this.power === 'off') {
+        // In power-off state, short click has no action (must long-press 1.5s to turn on)
+        return;
+      }
+      if (this.interceptLockedOrLowPower()) return;
+      this.handleStartPauseClick();
     }
   }
 
-  toggleOnOff() {
+  togglePowerOnOff() {
     if (this.power === 'off') {
+      // Turn ON -> Standby
       this.power = 'standby';
-      sound.playPower(true);
-      this.resetInactivityTimer();
-    } else {
-      this.power = 'off';
-      sound.playPower(false);
-      this.stopRunning();
       this.editMode = 'none';
+      sound.playPower(true);
+      this.startStandbyCarousel();
+    } else {
+      // Turn OFF
+      this.power = 'off';
+      this.editMode = 'none';
+      this.childLocked = false;
+      this.stopRunning();
+      this.stopStandbyCarousel();
+      sound.playPower(false);
     }
     this.render();
   }
 
-  toggleStartPause() {
-    if (this.power === 'off') {
-      this.toggleOnOff();
-      return;
-    }
+  handleStartPauseClick() {
     sound.playClick();
-    if (this.power === 'standby' || this.power === 'paused') {
+    if (this.power === 'standby') {
+      // Start Running
       this.startRunning();
     } else if (this.power === 'running') {
+      // Pause
       this.pauseRunning();
+    } else if (this.power === 'paused') {
+      // Resume Running
+      this.resumeRunning();
+    } else if (this.power === 'standby' && this.editMode === 'reservation') {
+      // Confirm Reservation
+      this.confirmReservation();
     }
     this.render();
   }
@@ -290,6 +462,7 @@ class Scheme1Controller {
   startRunning() {
     this.power = 'running';
     this.editMode = 'none';
+    this.stopStandbyCarousel();
     this.remainingSec = timeStrToMinutes(this.currentTimeStr) * 60;
     this.startCountdown();
     this.startDotAnimation();
@@ -303,6 +476,13 @@ class Scheme1Controller {
     this.render();
   }
 
+  resumeRunning() {
+    this.power = 'running';
+    this.startCountdown();
+    this.startDotAnimation();
+    this.render();
+  }
+
   stopRunning() {
     clearInterval(this.countdownTimer);
     clearInterval(this.dotInterval);
@@ -313,14 +493,13 @@ class Scheme1Controller {
     this.countdownTimer = setInterval(() => {
       if (this.power === 'running' && this.remainingSec > 0) {
         this.remainingSec--;
-        if (this.displayMode === 'time') {
-          this.renderDigits();
-        }
+        this.renderDigits();
         if (this.remainingSec <= 0) {
-          // Completed
+          // Finished
           this.power = 'standby';
           sound.playAlert();
           this.stopRunning();
+          this.startStandbyCarousel();
           this.render();
         }
       }
@@ -345,12 +524,6 @@ class Scheme1Controller {
 
     if (this.power === 'running') {
       flame.classList.add('active');
-      // 8 dots total: indices 0..3 left, 4..7 right
-      // Center-outward ripple:
-      // Pair 0: index 3 & 4 (closest to center)
-      // Pair 1: index 2 & 5
-      // Pair 2: index 1 & 6
-      // Pair 3: index 0 & 7 (outermost)
       dots.forEach((dot, idx) => {
         let pairDist = 0;
         if (idx <= 3) pairDist = 3 - idx;
@@ -369,207 +542,410 @@ class Scheme1Controller {
     }
   }
 
-  handleCompPressStart(e) {
-    this.compPressStartTime = Date.now();
+  // ==================== STANDBY 3S ALTERNATING CAROUSEL ====================
+  startStandbyCarousel() {
+    this.stopStandbyCarousel();
+    this.standbyParam = 'temp'; // Start with temperature per specification
+    this.carouselTimer = setInterval(() => {
+      if (this.power === 'standby' && this.editMode === 'none' && !this.childLocked) {
+        this.standbyParam = this.standbyParam === 'temp' ? 'time' : 'temp';
+        this.render();
+      }
+    }, 3000);
+  }
+
+  stopStandbyCarousel() {
+    if (this.carouselTimer) {
+      clearInterval(this.carouselTimer);
+      this.carouselTimer = null;
+    }
+  }
+
+  // ==================== MODE & UNIT SWITCHING ====================
+  handleHeatDown(e) {
+    if (e) e.stopPropagation();
+    if (this.interceptLockedOrLowPower()) return;
+    this.heatPressStart = Date.now();
+    this.heatLongPressed = false;
+    clearTimeout(this.heatPressTimer);
+
+    // Long press 2s in standby switches unit (°F / °C)
+    if (this.power === 'standby') {
+      this.heatPressTimer = setTimeout(() => {
+        this.heatLongPressed = true;
+        this.toggleUnit();
+      }, 2000);
+    }
+  }
+
+  handleHeatUp(e) {
+    if (e) e.stopPropagation();
+    clearTimeout(this.heatPressTimer);
+    if (this.heatLongPressed) return;
+    if (Date.now() - this.heatPressStart < 2000) {
+      this.selectMode('heat');
+    }
+  }
+
+  selectMode(newMode) {
+    if (this.power === 'off') return;
+    sound.playMode();
+
+    if (this.power === 'paused') {
+      // Per spec: changing mode during pause immediately returns to standby!
+      this.power = 'standby';
+      this.stopRunning();
+      this.startStandbyCarousel();
+    }
+
+    this.mode = newMode;
+    if (newMode === 'dry') {
+      this.babyMode = false;
+    }
+
+    if (this.power === 'standby') {
+      this.exitEditMode();
+    }
+    this.render();
+  }
+
+  toggleUnit() {
+    sound.playClick();
+    this.unit = this.unit === 'F' ? 'C' : 'F';
+    this.render();
+  }
+
+  // ==================== SETTING KEY (COMPOSITE KEY) & RESERVATION ====================
+  handleCompDown(e) {
+    if (e) e.stopPropagation();
+    if (this.interceptLockedOrLowPower()) return;
+    this.compPressStart = Date.now();
     this.compLongPressed = false;
+    clearTimeout(this.compPressTimer);
+
+    // Long press 2s triggers reservation setup or cancels reservation
     this.compPressTimer = setTimeout(() => {
       this.compLongPressed = true;
-      this.toggleUnit();
-    }, 1200);
+      this.toggleReservation();
+    }, 2000);
   }
 
-  handleCompPressEnd(e) {
+  handleCompUp(e) {
+    if (e) e.stopPropagation();
     clearTimeout(this.compPressTimer);
-    if (!this.compLongPressed && Date.now() - this.compPressStartTime < 1200) {
-      this.cycleCompositeKey();
+    if (this.compLongPressed) return;
+
+    if (Date.now() - this.compPressStart < 2000) {
+      this.handleCompClick();
     }
   }
 
-  clearCompPress() {
-    clearTimeout(this.compPressTimer);
-  }
-
-  cycleCompositeKey() {
-    if (this.power === 'off') return;
+  handleCompClick() {
     sound.playClick();
-    this.resetInactivityTimer();
 
-    // Q2 logic confirmed by user:
-    // "第一次点复合键切到时间，第二次切到温度，第三次回时间。5s没操作就会到默认状态"
-    if (this.mode === 'dry') {
-      // Dry mode only has time adjustment
-      this.displayMode = 'time';
-      this.editMode = 'time';
-    } else if (this.editMode === 'none') {
-      this.displayMode = 'time';
-      this.editMode = 'time';
-    } else if (this.editMode === 'time') {
-      if (this.babyMode) {
-        // In baby mode temp is locked!
-        this.editMode = 'none';
-        this.displayMode = 'temp';
-      } else {
-        this.displayMode = 'temp';
-        this.editMode = 'temp';
-      }
+    if (this.power === 'paused') {
+      // In pause, editing parameter returns to standby
+      this.power = 'standby';
+      this.stopRunning();
+      this.enterEditMode('temp');
+      return;
+    }
+
+    if (this.power !== 'standby') return;
+
+    // Standby: 1st click -> Temp edit; 2nd click -> Time edit; 3rd click -> Temp edit
+    if (this.editMode === 'none') {
+      this.enterEditMode('temp');
     } else if (this.editMode === 'temp') {
-      this.displayMode = 'time';
-      this.editMode = 'time';
+      this.enterEditMode('time');
+    } else if (this.editMode === 'time') {
+      this.enterEditMode('temp');
+    } else if (this.editMode === 'reservation') {
+      // Already in reservation, click cycle
+      this.editMode = 'temp';
+      this.render();
+    }
+  }
+
+  enterEditMode(mode) {
+    this.editMode = mode;
+    this.stopStandbyCarousel();
+    this.resetEditInactivityTimer();
+    this.render();
+  }
+
+  exitEditMode() {
+    this.editMode = 'none';
+    clearTimeout(this.inactivityTimer);
+    if (this.power === 'standby') {
+      this.startStandbyCarousel();
     }
     this.render();
   }
 
-  switchToDisplay(type) {
-    if (this.power === 'off') return;
+  resetEditInactivityTimer() {
+    clearTimeout(this.inactivityTimer);
+    // 5s inactivity returns to default standby per spec
+    this.inactivityTimer = setTimeout(() => {
+      this.exitEditMode();
+    }, 5000);
+  }
+
+  // ==================== RESERVATION LOGIC ====================
+  toggleReservation() {
     sound.playClick();
-    this.displayMode = type;
-    this.editMode = type;
-    this.resetInactivityTimer();
+    if (this.power === 'reserved' || this.editMode === 'reservation') {
+      // Cancel reservation and return to standby
+      this.power = 'standby';
+      this.exitEditMode();
+      return;
+    }
+
+    // Enter reservation editing
+    this.power = 'standby';
+    this.editMode = 'reservation';
+    this.stopStandbyCarousel();
+
+    // 1-minute auto-cancel if start not pressed
+    clearTimeout(this.inactivityTimer);
+    this.inactivityTimer = setTimeout(() => {
+      this.exitEditMode();
+    }, 60000);
+
     this.render();
   }
 
-  setMode(mode) {
-    if (this.power === 'off') return;
-    if (this.mode === mode) return;
-    sound.playMode();
-    this.mode = mode;
-    if (mode === 'dry') {
-      this.babyMode = false;
-      this.displayMode = 'time';
-      this.editMode = 'none';
-    } else {
-      this.displayMode = 'temp';
-      this.editMode = 'none';
+  confirmReservation() {
+    sound.playClick();
+    this.power = 'reserved';
+    this.editMode = 'none';
+    clearTimeout(this.inactivityTimer);
+    this.stopStandbyCarousel();
+    this.render();
+  }
+
+  // ==================== BABY MODE & CHILD LOCK ====================
+  handleBabyDown(e) {
+    if (e) e.stopPropagation();
+    this.babyPressStart = Date.now();
+    this.babyLongPressed = false;
+    clearTimeout(this.babyPressTimer);
+
+    // Long press 2s triggers child lock
+    this.babyPressTimer = setTimeout(() => {
+      this.babyLongPressed = true;
+      this.toggleChildLock();
+    }, 2000);
+  }
+
+  handleBabyUp(e) {
+    if (e) e.stopPropagation();
+    clearTimeout(this.babyPressTimer);
+    if (this.babyLongPressed) return;
+
+    if (Date.now() - this.babyPressStart < 2000) {
+      if (this.interceptLockedOrLowPower()) return;
+      this.toggleBabyMode();
     }
-    this.resetInactivityTimer();
+  }
+
+  toggleChildLock() {
+    this.childLocked = !this.childLocked;
+    sound.playAlert();
+    if (this.childLocked) {
+      this.exitEditMode();
+    }
     this.render();
   }
 
   toggleBabyMode() {
     if (this.power === 'off') return;
     sound.playClick();
+
+    if (this.power === 'paused') {
+      this.power = 'standby';
+      this.stopRunning();
+    }
+
     this.babyMode = !this.babyMode;
     if (this.babyMode) {
-      this.savedPreBabyTempIndex = this.tempIndex;
       this.mode = 'heat';
-      this.displayMode = 'temp';
-      this.editMode = 'none';
-    } else {
-      this.tempIndex = this.savedPreBabyTempIndex;
     }
-    this.resetInactivityTimer();
+
+    if (this.power === 'standby') {
+      this.exitEditMode();
+    }
     this.render();
   }
 
-  toggleUnit() {
-    if (this.power === 'off') return;
-    sound.playClick();
-    this.unit = this.unit === 'F' ? 'C' : 'F';
-    this.render();
+  // ==================== PARAMETER ADJUSTMENT (+ / -) ====================
+  handleAdjustDown(e, delta) {
+    if (e) e.stopPropagation();
+    if (this.interceptLockedOrLowPower()) return;
+    this.adjustValue(delta);
+
+    // Continuous stepping after 0.5s hold (step every 0.5s)
+    clearTimeout(this.adjustHoldTimer);
+    clearInterval(this.adjustStepInterval);
+    this.adjustHoldTimer = setTimeout(() => {
+      this.adjustStepInterval = setInterval(() => {
+        this.adjustValue(delta);
+      }, 500);
+    }, 500);
   }
 
-  adjustParam(delta) {
-    if (this.power === 'off') return;
-    sound.playClick();
-    this.resetInactivityTimer();
+  handleAdjustUp() {
+    clearTimeout(this.adjustHoldTimer);
+    clearInterval(this.adjustStepInterval);
+  }
 
-    // If not in edit mode, entering adjustment defaults to editing current display
+  adjustValue(delta) {
+    sound.playClick();
+    this.resetEditInactivityTimer();
+
+    // In reservation mode
+    if (this.editMode === 'reservation') {
+      const len = RESERVATION_PRESETS.length;
+      this.reserveIndex = (this.reserveIndex + delta + len) % len;
+      this.render();
+      return;
+    }
+
+    // If in standby and not editing, start editing current display
     if (this.editMode === 'none') {
-      this.editMode = this.displayMode;
+      this.editMode = this.standbyParam;
     }
 
     if (this.editMode === 'temp') {
-      if (this.babyMode) return; // locked
-      const max = (this.unit === 'F' ? TEMP_PRESETS_F : TEMP_PRESETS_C).length;
-      this.tempIndex = (this.tempIndex + delta + max) % max;
+      if (this.mode === 'dry' || this.babyMode) {
+        // Temperature is fixed! Cannot be adjusted
+        return;
+      }
+      // Adult HEAT: 120, 140, 160 (or 50, 60, 70)
+      const max = (this.unit === 'F' ? TEMP_PRESETS_F : TEMP_PRESETS_C).length - 1;
+      const next = this.tempIndex + delta;
+      if (next >= 0 && next <= max) {
+        this.tempIndex = next;
+      }
     } else if (this.editMode === 'time') {
-      if (this.mode === 'heat') {
-        const max = HEAT_TIME_PRESETS.length;
-        this.heatTimeIndex = (this.heatTimeIndex + delta + max) % max;
+      if (this.babyMode) {
+        if (this.mode === 'heat') {
+          const max = BABY_HEAT_TIME_PRESETS.length - 1;
+          const next = this.babyHeatTimeIndex + delta;
+          if (next >= 0 && next <= max) this.babyHeatTimeIndex = next;
+        } else {
+          const max = BABY_DRY_TIME_PRESETS.length - 1;
+          const next = this.babyDryTimeIndex + delta;
+          if (next >= 0 && next <= max) this.babyDryTimeIndex = next;
+        }
       } else {
-        // DRY mode has min & max bounds per spec!
-        // "到达最低值时【-】熄灭，不可点击；到达最高值时【+】熄灭，不可点击"
-        const next = this.dryTimeIndex + delta;
-        if (next >= 0 && next < DRY_TIME_PRESETS.length) {
-          this.dryTimeIndex = next;
+        if (this.mode === 'heat') {
+          const max = HEAT_TIME_PRESETS.length - 1;
+          const next = this.heatTimeIndex + delta;
+          if (next >= 0 && next <= max) this.heatTimeIndex = next;
+        } else {
+          const max = DRY_TIME_PRESETS.length - 1;
+          const next = this.dryTimeIndex + delta;
+          if (next >= 0 && next <= max) this.dryTimeIndex = next;
         }
       }
     }
     this.render();
   }
 
-  resetInactivityTimer() {
-    clearTimeout(this.inactivityTimer);
-    this.inactivityTimer = setTimeout(() => {
-      if (this.editMode !== 'none') {
-        this.editMode = 'none';
-        this.render();
-      }
-    }, 5000);
-  }
-
+  // ==================== RENDER UI & STATES ====================
   render() {
     const isOff = this.power === 'off';
     const isRunning = this.power === 'running';
     const isPaused = this.power === 'paused';
+    const isReserved = this.power === 'reserved';
 
     this.root.classList.toggle('device-off', isOff);
     this.root.classList.toggle('running', isRunning);
     this.root.classList.toggle('paused', isPaused);
+    this.root.classList.toggle('low-power', this.isLowPower);
 
-    // Pill sections
+    // 1. Pill Bar Buttons
     const heatEl = this.root.querySelector('.pill-heat');
     const dryEl = this.root.querySelector('.pill-dry');
     const powerCenter = this.root.querySelector('.pill-power-center');
-    if (heatEl) heatEl.classList.toggle('active', this.mode === 'heat');
-    if (dryEl) dryEl.classList.toggle('active', this.mode === 'dry');
-    if (powerCenter) powerCenter.classList.toggle('active', isRunning || this.power === 'standby');
 
-    // Time & Temp tabs
-    const timeTab = this.root.querySelector('.pos-time-tab .tab-label');
-    const timeLine = this.root.querySelector('.pos-time-tab .tab-indicator-line');
-    const tempTab = this.root.querySelector('.pos-temp-tab .tab-label');
-    const tempLine = this.root.querySelector('.pos-temp-tab .tab-indicator-line');
-    const isShowingTime = this.displayMode === 'time';
-    if (timeTab) timeTab.classList.toggle('active', isShowingTime);
-    if (timeLine) timeLine.classList.toggle('active', isShowingTime);
-    if (tempTab) tempTab.classList.toggle('active', !isShowingTime);
-    if (tempLine) tempLine.classList.toggle('active', !isShowingTime);
-
-    // Baby mode key
-    const babyBtn = this.root.querySelector('.btn-baby-key');
-    if (babyBtn) {
-      babyBtn.classList.toggle('baby-active', this.babyMode);
+    if (heatEl) {
+      if (isOff) {
+        heatEl.style.opacity = '0';
+      } else if (isRunning) {
+        heatEl.style.opacity = this.mode === 'heat' ? '1' : '0.05';
+      } else {
+        heatEl.style.opacity = this.mode === 'heat' ? '1' : '0.45';
+      }
+      heatEl.classList.toggle('active', this.mode === 'heat' && !isOff);
     }
 
-    // Adjust button disabled states (Dry mode limits)
-    const leftBtn = this.root.querySelector('.btn-adjust-left');
-    const rightBtn = this.root.querySelector('.btn-adjust-right');
-    if (leftBtn && rightBtn) {
-      if (this.mode === 'dry' && this.editMode === 'time') {
-        leftBtn.classList.toggle('disabled', this.dryTimeIndex === 0);
-        rightBtn.classList.toggle('disabled', this.dryTimeIndex === DRY_TIME_PRESETS.length - 1);
-      } else if (this.babyMode && this.editMode === 'temp') {
-        leftBtn.classList.add('disabled');
-        rightBtn.classList.add('disabled');
+    if (dryEl) {
+      if (isOff) {
+        dryEl.style.opacity = '0';
+      } else if (isRunning) {
+        dryEl.style.opacity = this.mode === 'dry' ? '1' : '0.05';
       } else {
-        leftBtn.classList.remove('disabled');
-        rightBtn.classList.remove('disabled');
+        dryEl.style.opacity = this.mode === 'dry' ? '1' : '0.45';
+      }
+      dryEl.classList.toggle('active', this.mode === 'dry' && !isOff);
+    }
+
+    if (powerCenter) {
+      if (isOff) {
+        powerCenter.style.opacity = '0.35';
+        powerCenter.classList.remove('active', 'pause-blink');
+      } else if (isPaused) {
+        powerCenter.style.opacity = '1';
+        powerCenter.classList.add('pause-blink');
+      } else {
+        powerCenter.style.opacity = '1';
+        powerCenter.classList.remove('pause-blink');
+        powerCenter.classList.add('active');
       }
     }
 
-    // Status icons
-    const iconWifi = this.root.querySelector('.s1-icon-wifi');
-    const iconF = this.root.querySelector('.s1-icon-f');
-    const iconC = this.root.querySelector('.s1-icon-c');
-    if (iconWifi) iconWifi.classList.add('active');
-    if (iconF) iconF.classList.toggle('active', !isShowingTime && this.unit === 'F');
-    if (iconC) iconC.classList.toggle('active', !isShowingTime && this.unit === 'C');
+    // 2. Setting / Composite Key (Left bottom)
+    const compBtn = this.root.querySelector('.btn-composite-key');
+    if (compBtn) {
+      if (isOff || isRunning) {
+        compBtn.style.opacity = '0.05';
+        compBtn.style.pointerEvents = 'none';
+      } else {
+        compBtn.style.pointerEvents = 'auto';
+        compBtn.style.opacity = (this.editMode === 'temp' || this.editMode === 'time' || this.editMode === 'reservation') ? '1' : '0.45';
+      }
+    }
 
-    // Render 7-segment Digits
+    // 3. Baby Key (Right bottom)
+    const babyBtn = this.root.querySelector('.btn-baby-key');
+    if (babyBtn) {
+      if (isOff || isRunning) {
+        babyBtn.style.opacity = '0.05';
+        babyBtn.style.pointerEvents = 'none';
+      } else {
+        babyBtn.style.pointerEvents = 'auto';
+        babyBtn.style.opacity = this.babyMode ? '1' : '0.45';
+      }
+      babyBtn.classList.toggle('baby-active', this.babyMode && !isOff);
+    }
+
+    // 4. Adjust Buttons (+ / -)
+    const minusBtn = this.root.querySelector('.btn-adjust-left');
+    const plusBtn = this.root.querySelector('.btn-adjust-right');
+    this.renderAdjustButtons(minusBtn, plusBtn, isOff, isRunning);
+
+    // 5. Time & Temp Indicator Tabs at Top
+    this.renderTabs(isOff, isRunning);
+
+    // 6. Status Icons
+    this.renderIcons(isOff, isReserved);
+
+    // 7. Segmented Digits
     this.renderDigits();
 
-    // Render Flame & Dots
+    // 8. Dots & Flame
     this.renderDots();
 
     if (this.onStateChange) {
@@ -577,41 +953,172 @@ class Scheme1Controller {
         scheme: 1,
         power: this.power,
         mode: this.mode,
-        displayMode: this.displayMode,
-        editMode: this.editMode,
         temp: this.currentTemp,
         time: this.currentTimeStr,
         babyMode: this.babyMode,
-        unit: this.unit
+        unit: this.unit,
+        childLocked: this.childLocked
       });
     }
+  }
+
+  renderAdjustButtons(minusBtn, plusBtn, isOff, isRunning) {
+    if (!minusBtn || !plusBtn) return;
+    if (isOff || isRunning || this.power === 'reserved') {
+      minusBtn.classList.add('disabled');
+      plusBtn.classList.add('disabled');
+      return;
+    }
+
+    // In reservation edit
+    if (this.editMode === 'reservation') {
+      minusBtn.classList.remove('disabled');
+      plusBtn.classList.remove('disabled');
+      return;
+    }
+
+    // If editing temp
+    if (this.editMode === 'temp') {
+      if (this.mode === 'dry' || this.babyMode) {
+        minusBtn.classList.add('disabled');
+        plusBtn.classList.add('disabled');
+      } else {
+        const max = (this.unit === 'F' ? TEMP_PRESETS_F : TEMP_PRESETS_C).length - 1;
+        minusBtn.classList.toggle('disabled', this.tempIndex === 0);
+        plusBtn.classList.toggle('disabled', this.tempIndex === max);
+      }
+      return;
+    }
+
+    // If editing time
+    if (this.editMode === 'time') {
+      if (this.babyMode) {
+        if (this.mode === 'heat') {
+          minusBtn.classList.toggle('disabled', this.babyHeatTimeIndex === 0);
+          plusBtn.classList.toggle('disabled', this.babyHeatTimeIndex === BABY_HEAT_TIME_PRESETS.length - 1);
+        } else {
+          minusBtn.classList.toggle('disabled', this.babyDryTimeIndex === 0);
+          plusBtn.classList.toggle('disabled', this.babyDryTimeIndex === BABY_DRY_TIME_PRESETS.length - 1);
+        }
+      } else {
+        if (this.mode === 'heat') {
+          minusBtn.classList.toggle('disabled', this.heatTimeIndex === 0);
+          plusBtn.classList.toggle('disabled', this.heatTimeIndex === HEAT_TIME_PRESETS.length - 1);
+        } else {
+          minusBtn.classList.toggle('disabled', this.dryTimeIndex === 0);
+          plusBtn.classList.toggle('disabled', this.dryTimeIndex === DRY_TIME_PRESETS.length - 1);
+        }
+      }
+      return;
+    }
+
+    // In normal standby, keep buttons enabled
+    minusBtn.classList.remove('disabled');
+    plusBtn.classList.remove('disabled');
+  }
+
+  renderTabs(isOff, isRunning) {
+    const timeTab = this.root.querySelector('.pos-time-tab .tab-label');
+    const timeLine = this.root.querySelector('.pos-time-tab .tab-indicator-line');
+    const tempTab = this.root.querySelector('.pos-temp-tab .tab-label');
+    const tempLine = this.root.querySelector('.pos-temp-tab .tab-indicator-line');
+
+    if (!timeTab || !tempTab) return;
+
+    if (isOff) {
+      timeTab.classList.remove('active');
+      tempTab.classList.remove('active');
+      if (timeLine) timeLine.classList.remove('active');
+      if (tempLine) tempLine.classList.remove('active');
+      return;
+    }
+
+    let isShowingTime = false;
+    if (isRunning || this.power === 'paused') {
+      isShowingTime = true;
+    } else if (this.editMode === 'time' || this.editMode === 'reservation') {
+      isShowingTime = true;
+    } else if (this.editMode === 'temp') {
+      isShowingTime = false;
+    } else {
+      isShowingTime = this.standbyParam === 'time';
+    }
+
+    timeTab.classList.toggle('active', isShowingTime);
+    tempTab.classList.toggle('active', !isShowingTime);
+    if (timeLine) timeLine.classList.toggle('active', isShowingTime);
+    if (tempLine) tempLine.classList.toggle('active', !isShowingTime);
+  }
+
+  renderIcons(isOff, isReserved) {
+    const iconWifi = this.root.querySelector('.s1-icon-wifi');
+    const iconAlarm = this.root.querySelector('.s1-icon-alarm');
+    const iconLock = this.root.querySelector('.s1-icon-lock');
+    const iconF = this.root.querySelector('.s1-icon-f');
+    const iconC = this.root.querySelector('.s1-icon-c');
+
+    if (iconWifi) iconWifi.classList.toggle('active', !isOff);
+
+    // Alarm Icon (Reservation)
+    if (iconAlarm) {
+      const showAlarm = this.editMode === 'reservation' || isReserved;
+      iconAlarm.classList.toggle('active', showAlarm && !isOff);
+    }
+
+    // Lock Icon (Child Lock)
+    if (iconLock) {
+      iconLock.classList.toggle('active', this.childLocked && !isOff);
+    }
+
+    // Unit Icons (°F / °C)
+    let isShowingTime = (this.power === 'running' || this.power === 'paused') || (this.editMode === 'time' || this.editMode === 'reservation') || (this.editMode === 'none' && this.standbyParam === 'time');
+    if (iconF) iconF.classList.toggle('active', !isOff && !isShowingTime && this.unit === 'F');
+    if (iconC) iconC.classList.toggle('active', !isOff && !isShowingTime && this.unit === 'C');
   }
 
   renderDigits() {
     const digitContainer = this.root.querySelector('.s1-digits');
     if (!digitContainer) return;
 
-    digitContainer.classList.toggle('blinking', this.editMode !== 'none');
+    if (this.power === 'off') {
+      digitContainer.innerHTML = '';
+      return;
+    }
+
+    // Blinking styles
+    const shouldBlink = (this.editMode !== 'none') || (this.power === 'paused');
+    digitContainer.classList.toggle('blinking', shouldBlink);
 
     let d1 = ' ', d2 = ' ', d3 = ' ', d4 = ' ';
     let showColon = false;
 
-    if (this.displayMode === 'time') {
+    // 1. Running or Paused
+    if (this.power === 'running' || this.power === 'paused') {
       showColon = true;
-      const str = this.power === 'running' 
-        ? formatCountdown(this.remainingSec) 
-        : this.currentTimeStr;
+      const str = formatCountdown(this.remainingSec);
       const [h, m] = str.split(':');
-      d1 = h[0];
-      d2 = h[1];
-      d3 = m[0];
-      d4 = m[1];
-    } else {
-      // Temperature display
+      d1 = h[0]; d2 = h[1]; d3 = m[0]; d4 = m[1];
+    }
+    // 2. Reservation setup
+    else if (this.editMode === 'reservation' || this.power === 'reserved') {
+      showColon = true;
+      const str = this.currentReserveStr;
+      const [h, m] = str.split(':');
+      d1 = h[0]; d2 = h[1]; d3 = m[0]; d4 = m[1];
+    }
+    // 3. Time Editing or Standby Time display
+    else if (this.editMode === 'time' || (this.editMode === 'none' && this.standbyParam === 'time')) {
+      showColon = true;
+      const str = this.currentTimeStr;
+      const [h, m] = str.split(':');
+      d1 = h[0]; d2 = h[1]; d3 = m[0]; d4 = m[1];
+    }
+    // 4. Temperature Editing or Standby Temp display
+    else {
       showColon = false;
       const tempNum = String(this.currentTemp);
       if (tempNum.length === 3) {
-        d1 = ' '; // dim
+        d1 = ' ';
         d2 = tempNum[0];
         d3 = tempNum[1];
         d4 = tempNum[2];

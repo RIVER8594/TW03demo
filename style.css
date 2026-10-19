@@ -373,6 +373,30 @@ body.is-embedded .device-wrapper {
   animation: segBlink 1s infinite ease-in-out;
 }
 
+@keyframes lockBlink {
+  0%, 100% { opacity: 1; filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.9)); }
+  50% { opacity: 0.08; filter: none; }
+}
+
+.lock-warning-blink {
+  animation: lockBlink 0.6s infinite ease-in-out !important;
+}
+
+@keyframes pauseBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.12; }
+}
+
+.pause-blink {
+  animation: pauseBlink 2s infinite ease-in-out !important;
+}
+
+.low-power .device-touch-layer {
+  opacity: 0.35 !important;
+  transition: opacity 0.4s ease;
+}
+
+
 /* ---------------- Status Icons ---------------- */
 .status-icon {
   position: absolute;
