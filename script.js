@@ -625,22 +625,22 @@ class Scheme1Controller {
       // In pause, editing parameter returns to standby
       this.power = 'standby';
       this.stopRunning();
-      this.enterEditMode('temp');
+      this.enterEditMode('time');
       return;
     }
 
     if (this.power !== 'standby') return;
 
-    // Standby: 1st click -> Temp edit; 2nd click -> Time edit; 3rd click -> Temp edit
+    // Standby: 1st click -> Time edit; 2nd click -> Temp edit; 3rd click -> Time edit
     if (this.editMode === 'none') {
-      this.enterEditMode('temp');
-    } else if (this.editMode === 'temp') {
       this.enterEditMode('time');
     } else if (this.editMode === 'time') {
       this.enterEditMode('temp');
+    } else if (this.editMode === 'temp') {
+      this.enterEditMode('time');
     } else if (this.editMode === 'reservation') {
       // Already in reservation, click cycle
-      this.editMode = 'temp';
+      this.editMode = 'time';
       this.render();
     }
   }
@@ -952,11 +952,15 @@ class Scheme1Controller {
     if (this.editMode === 'reservation') {
       minusBtn.classList.remove('disabled');
       plusBtn.classList.remove('disabled');
+      minusBtn.classList.add('active');
+      plusBtn.classList.add('active');
       return;
     }
 
     // If editing temp
     if (this.editMode === 'temp') {
+      minusBtn.classList.add('active');
+      plusBtn.classList.add('active');
       if (this.mode === 'dry' || this.babyMode) {
         minusBtn.classList.add('disabled');
         plusBtn.classList.add('disabled');
@@ -970,6 +974,8 @@ class Scheme1Controller {
 
     // If editing time
     if (this.editMode === 'time') {
+      minusBtn.classList.add('active');
+      plusBtn.classList.add('active');
       if (this.babyMode) {
         if (this.mode === 'heat') {
           minusBtn.classList.toggle('disabled', this.babyHeatTimeIndex === 0);
@@ -990,9 +996,9 @@ class Scheme1Controller {
       return;
     }
 
-    // In normal standby, keep buttons enabled
-    minusBtn.classList.remove('disabled');
-    plusBtn.classList.remove('disabled');
+    // In normal standby, keep buttons enabled with standard brightness (not active)
+    minusBtn.classList.remove('disabled', 'active');
+    plusBtn.classList.remove('disabled', 'active');
   }
 
   renderTabs(isOff, isRunning) {
