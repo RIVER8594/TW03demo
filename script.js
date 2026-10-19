@@ -887,17 +887,22 @@ class Scheme1Controller {
     // 2. Setting / Composite Key (Left bottom)
     const compBtn = this.root.querySelector('.btn-composite-key');
     if (compBtn) {
+      const compImg = compBtn.querySelector('img');
       if (isOff || isRunning) {
         compBtn.style.opacity = '0.05';
         compBtn.style.pointerEvents = 'none';
         compBtn.style.filter = 'none';
         compBtn.classList.remove('editing-glow');
+        if (compImg) compImg.src = 'images/时间:温度icon/状态=全灭.svg';
       } else {
         compBtn.style.pointerEvents = 'auto';
         const isEditing = (this.editMode === 'temp' || this.editMode === 'time' || this.editMode === 'reservation');
         compBtn.style.opacity = isEditing ? '1' : '0.45';
         compBtn.style.filter = isEditing ? 'drop-shadow(0 0 10px rgba(255, 255, 255, 0.85))' : 'none';
         compBtn.classList.toggle('editing-glow', isEditing);
+        if (compImg) compImg.src = isEditing
+          ? 'images/时间:温度icon/状态=全亮.svg'
+          : 'images/时间:温度icon/状态=半亮.svg';
       }
     }
 
