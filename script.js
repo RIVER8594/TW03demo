@@ -112,7 +112,7 @@ const TEMP_PRESETS_F = [120, 140, 160];
 const TEMP_PRESETS_C = [50, 60, 70];
 const DRY_TEMP_F = 210;
 const DRY_TEMP_C = 100;
-const BABY_TEMP_F = 104;
+const BABY_TEMP_F = 105;
 const BABY_TEMP_C = 40;
 const BABY_DRY_TEMP_F = 180;
 const BABY_DRY_TEMP_C = 82;
@@ -1797,10 +1797,13 @@ class Scheme2Controller {
         compBtn.style.pointerEvents = 'auto';
         compBtn.style.opacity = this.editMode !== 'none' ? '1' : '0.45';
         if (compImg) {
-          if (this.editMode === 'time') {
+          const isTempFixed = this.mode === 'dry' || this.babyMode;
+          if (isTempFixed) {
+            compImg.src = 'images/时间:温度icon/状态=仅时间可调.svg';
+          } else if (this.editMode === 'time') {
             compImg.src = 'images/时间:温度icon/状态=仅时间可调.svg';
           } else if (this.editMode === 'temp') {
-            compImg.src = 'images/时间:温度icon/状态=全亮.svg';
+            compImg.src = 'images/时间:温度icon/状态=仅温度可调.svg';
           } else {
             compImg.src = 'images/时间:温度icon/状态=半亮.svg';
           }
@@ -1813,8 +1816,8 @@ class Scheme2Controller {
     const iconF = this.root.querySelector('.s2-icon-f');
     const iconC = this.root.querySelector('.s2-icon-c');
     if (iconWifi) iconWifi.classList.add('active');
-    if (iconF) iconF.classList.toggle('active', this.mode === 'heat' && this.unit === 'F');
-    if (iconC) iconC.classList.toggle('active', this.mode === 'heat' && this.unit === 'C');
+    if (iconF) iconF.classList.toggle('active', !isOff && this.unit === 'F');
+    if (iconC) iconC.classList.toggle('active', !isOff && this.unit === 'C');
 
     this.renderTimeDigits();
     this.renderTempDigits();
@@ -1825,7 +1828,7 @@ class Scheme2Controller {
         power: this.power,
         mode: this.mode,
         editMode: this.editMode,
-        temp: this.mode === 'heat' ? this.currentTemp : '--',
+        temp: this.currentTemp,
         time: this.currentTimeStr,
         babyMode: this.babyMode,
         unit: this.unit
@@ -1858,15 +1861,6 @@ class Scheme2Controller {
     const tempContainer = this.root.querySelector('.s2-temp-digits');
     if (!tempContainer) return;
     tempContainer.classList.toggle('blinking', this.editMode === 'temp');
-
-    if (this.mode === 'dry') {
-      tempContainer.innerHTML = `
-        <img class="seg-digit-w16" src="${getDigitSvg('-')}" alt="-">
-        <img class="seg-digit-w16" src="${getDigitSvg('-')}" alt="-">
-        <img class="seg-digit-w16" src="${getDigitSvg('-')}" alt="-">
-      `;
-      return;
-    }
 
     const tempNum = String(this.currentTemp);
     let d1 = ' ', d2 = ' ', d3 = ' ';
@@ -2351,17 +2345,18 @@ class Scheme3Controller {
       timeBtn.classList.toggle('active', this.editMode === 'time');
     }
     if (tempBtn) {
+      const isTempFixed = this.mode === 'dry' || this.babyMode;
       if (isOff) {
         tempBtn.style.opacity = '0.05';
         tempBtn.style.pointerEvents = 'none';
-      } else if (isRunning) {
+      } else if (isRunning || isTempFixed) {
         tempBtn.style.opacity = '0';
         tempBtn.style.pointerEvents = 'none';
       } else {
         tempBtn.style.opacity = this.editMode === 'temp' ? '1' : '0.45';
         tempBtn.style.pointerEvents = 'auto';
       }
-      tempBtn.classList.toggle('active', this.editMode === 'temp');
+      tempBtn.classList.toggle('active', this.editMode === 'temp' && !isTempFixed);
     }
 
     // Standalone power button
@@ -2390,8 +2385,8 @@ class Scheme3Controller {
     const iconF = this.root.querySelector('.s3-icon-f');
     const iconC = this.root.querySelector('.s3-icon-c');
     if (iconWifi) iconWifi.classList.add('active');
-    if (iconF) iconF.classList.toggle('active', this.mode === 'heat' && this.unit === 'F');
-    if (iconC) iconC.classList.toggle('active', this.mode === 'heat' && this.unit === 'C');
+    if (iconF) iconF.classList.toggle('active', !isOff && this.unit === 'F');
+    if (iconC) iconC.classList.toggle('active', !isOff && this.unit === 'C');
 
     this.renderTimeDigits();
     this.renderTempDigits();
@@ -2402,7 +2397,7 @@ class Scheme3Controller {
         power: this.power,
         mode: this.mode,
         editMode: this.editMode,
-        temp: this.mode === 'heat' ? this.currentTemp : '--',
+        temp: this.currentTemp,
         time: this.currentTimeStr,
         babyMode: this.babyMode,
         unit: this.unit
@@ -2411,7 +2406,7 @@ class Scheme3Controller {
   }
 
   renderTimeDigits() {
-    const timeContainer = this.root.querySelector('.s23-time-digits');
+    const timeContainer = this.root.querySelector('.s3-time-digits');
     if (!timeContainer) return;
     const isPaused = this.power === 'paused';
     timeContainer.classList.toggle('blinking', this.editMode === 'time' && !isPaused);
@@ -2435,15 +2430,6 @@ class Scheme3Controller {
     const tempContainer = this.root.querySelector('.s3-temp-digits');
     if (!tempContainer) return;
     tempContainer.classList.toggle('blinking', this.editMode === 'temp');
-
-    if (this.mode === 'dry') {
-      tempContainer.innerHTML = `
-        <img class="seg-digit-w16" src="${getDigitSvg('-')}" alt="-">
-        <img class="seg-digit-w16" src="${getDigitSvg('-')}" alt="-">
-        <img class="seg-digit-w16" src="${getDigitSvg('-')}" alt="-">
-      `;
-      return;
-    }
 
     const tempNum = String(this.currentTemp);
     let d1 = ' ', d2 = ' ', d3 = ' ';

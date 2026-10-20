@@ -311,10 +311,22 @@ body.is-embedded .device-wrapper {
   box-shadow: none !important;
 }
 
-/* Scheme 2 & 3 upper time digits */
+/* Scheme 2 upper time digits */
 .s23-time-digits {
   left: 42.87%;
   top: 38.83%;
+  width: 14.32%;
+  height: 7.01%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.1%;
+}
+
+/* Scheme 3 upper time digits (shifted slightly upward per design feedback) */
+.s3-time-digits {
+  left: 42.87%;
+  top: 37.00%;
   width: 14.32%;
   height: 7.01%;
   display: flex;
@@ -338,7 +350,7 @@ body.is-embedded .device-wrapper {
 /* Scheme 3 lower temp digits */
 .s3-temp-digits {
   left: 45.09%;
-  top: 46.74%;
+  top: 48.14%;
   width: 10.75%;
   height: 7.01%;
   display: flex;
@@ -441,12 +453,12 @@ body.is-embedded .device-wrapper {
 .s2-icon-c { left: 55.85%; top: 54.85%; }
 
 /* Scheme 3 Icon Positions */
-.s3-icon-wifi { left: 40.66%; top: 36.46%; }
-.s3-icon-alarm { left: 46.32%; top: 36.46%; }
-.s3-icon-lock { left: 52.21%; top: 36.46%; }
-.s3-icon-ion { left: 58.06%; top: 36.46%; }
-.s3-icon-f { left: 55.85%; top: 47.00%; }
-.s3-icon-c { left: 55.85%; top: 51.60%; }
+.s3-icon-wifi { left: 40.66%; top: 34.63%; }
+.s3-icon-alarm { left: 46.32%; top: 34.63%; }
+.s3-icon-lock { left: 52.21%; top: 34.63%; }
+.s3-icon-ion { left: 58.06%; top: 34.63%; }
+.s3-icon-f { left: 55.85%; top: 48.41%; }
+.s3-icon-c { left: 55.85%; top: 53.02%; }
 
 /* ---------------- Scheme 1 Flame & Dots Indicator ---------------- */
 .s1-indicator-bar {
@@ -510,8 +522,8 @@ body.is-embedded .device-wrapper {
 
 .s3-divider {
   left: 50%;
-  top: 45.0%;
-  width: 18.70%;
+  top: 46.35%;
+  width: 18.11%;
 }
 
 .divider-static-line {
@@ -626,7 +638,7 @@ body.is-embedded .device-wrapper {
 .s3-adjust-left {
   position: absolute;
   left: 36.48%;
-  top: 44.97%;
+  top: 46.33%;
   width: 2.94%;
   aspect-ratio: 1;
   transform: translate(-50%, -50%);
@@ -639,7 +651,7 @@ body.is-embedded .device-wrapper {
 .s3-adjust-right {
   position: absolute;
   left: 63.54%;
-  top: 44.98%;
+  top: 46.35%;
   width: 2.94%;
   aspect-ratio: 1;
   transform: translate(-50%, -50%);
@@ -849,7 +861,7 @@ body.is-embedded .device-wrapper {
 }
 
 /* Green Active Baby Mode styling requested by user */
-.baby-active {
+.btn-baby-key.baby-active {
   color: #00cf4d !important;
   opacity: 1 !important;
   filter: drop-shadow(0 0 8px rgba(0, 207, 77, 0.85)) drop-shadow(0 0 16px rgba(0, 207, 77, 0.5)) !important;
