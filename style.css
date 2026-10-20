@@ -697,7 +697,13 @@ body.is-embedded .device-wrapper {
 
 .pill-section.active {
   opacity: 1;
+  color: #fff;
   text-shadow: 0 0 10px rgba(255, 255, 255, 0.85);
+}
+
+.pill-section.active.baby-mode {
+  color: #00cf4d !important;
+  text-shadow: 0 0 10px rgba(0, 207, 77, 0.85), 0 0 18px rgba(0, 207, 77, 0.5) !important;
 }
 
 .pill-power-center {
@@ -789,19 +795,26 @@ body.is-embedded .device-wrapper {
 
 /* Green Active Baby Mode styling requested by user */
 .baby-active {
+  color: #00cf4d !important;
   opacity: 1 !important;
-  filter: drop-shadow(0 0 8px #52c41a) drop-shadow(0 0 16px rgba(82, 196, 26, 0.7)) !important;
-  transform: translate(-50%, -50%) scale(1.05) !important;
+  filter: drop-shadow(0 0 8px rgba(0, 207, 77, 0.85)) drop-shadow(0 0 16px rgba(0, 207, 77, 0.5)) !important;
+  transform: translate(-50%, -50%) !important;
 }
 
 .baby-active img {
-  filter: invert(65%) sepia(85%) saturate(450%) hue-rotate(85deg) brightness(105%) contrast(105%) drop-shadow(0 0 4px #52c41a) !important;
+  filter: brightness(0) saturate(100%) invert(67%) sepia(85%) saturate(3015%) hue-rotate(97deg) brightness(98%) contrast(105%) !important;
+}
+
+.pill-baby-center.baby-active {
+  color: #00cf4d !important;
+  opacity: 1 !important;
+  filter: drop-shadow(0 0 8px rgba(0, 207, 77, 0.85)) drop-shadow(0 0 16px rgba(0, 207, 77, 0.5)) !important;
 }
 
 .pill-baby-center.baby-active img {
   opacity: 1 !important;
-  filter: invert(65%) sepia(85%) saturate(450%) hue-rotate(85deg) brightness(105%) contrast(105%) drop-shadow(0 0 6px #52c41a) drop-shadow(0 0 12px rgba(82, 196, 26, 0.8)) !important;
-  transform: scale(1.08);
+  filter: brightness(0) saturate(100%) invert(67%) sepia(85%) saturate(3015%) hue-rotate(97deg) brightness(98%) contrast(105%) !important;
+  transform: scale(1.05);
 }
 
 /* Scheme 3 Independent Time & Temp Keys */

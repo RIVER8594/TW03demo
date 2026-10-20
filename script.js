@@ -112,7 +112,7 @@ const TEMP_PRESETS_F = [120, 140, 160];
 const TEMP_PRESETS_C = [50, 60, 70];
 const DRY_TEMP_F = 210;
 const DRY_TEMP_C = 100;
-const BABY_TEMP_F = 105;
+const BABY_TEMP_F = 104;
 const BABY_TEMP_C = 40;
 const BABY_DRY_TEMP_F = 180;
 const BABY_DRY_TEMP_C = 82;
@@ -601,9 +601,7 @@ class Scheme1Controller {
     }
 
     this.mode = newMode;
-    if (newMode === 'dry') {
-      this.babyMode = false;
-    }
+    this.babyMode = false;
 
     if (this.power === 'standby') {
       this.exitEditMode();
@@ -790,9 +788,6 @@ class Scheme1Controller {
     }
 
     this.babyMode = !this.babyMode;
-    if (this.babyMode) {
-      this.mode = 'heat';
-    }
 
     if (this.power === 'standby') {
       this.exitEditMode();
@@ -901,6 +896,7 @@ class Scheme1Controller {
         heatEl.style.opacity = this.mode === 'heat' ? '1' : '0.45';
       }
       heatEl.classList.toggle('active', this.mode === 'heat' && !isOff);
+      heatEl.classList.toggle('baby-mode', this.mode === 'heat' && this.babyMode && !isOff);
     }
 
     if (dryEl) {
@@ -912,6 +908,7 @@ class Scheme1Controller {
         dryEl.style.opacity = this.mode === 'dry' ? '1' : '0.45';
       }
       dryEl.classList.toggle('active', this.mode === 'dry' && !isOff);
+      dryEl.classList.toggle('baby-mode', this.mode === 'dry' && this.babyMode && !isOff);
     }
 
     if (powerCenter) {
@@ -953,8 +950,11 @@ class Scheme1Controller {
     // 3. Baby Key (Right bottom)
     const babyBtn = this.root.querySelector('.btn-baby-key');
     if (babyBtn) {
-      if (isOff || isRunning) {
+      if (isOff) {
         babyBtn.style.opacity = '0.05';
+        babyBtn.style.pointerEvents = 'none';
+      } else if (isRunning) {
+        babyBtn.style.opacity = this.babyMode ? '1' : '0.05';
         babyBtn.style.pointerEvents = 'none';
       } else {
         babyBtn.style.pointerEvents = 'auto';
@@ -1223,7 +1223,13 @@ class Scheme2Controller {
 
   get currentTemp() {
     if (this.babyMode) {
+      if (this.mode === 'dry') {
+        return this.unit === 'F' ? BABY_DRY_TEMP_F : BABY_DRY_TEMP_C;
+      }
       return this.unit === 'F' ? BABY_TEMP_F : BABY_TEMP_C;
+    }
+    if (this.mode === 'dry') {
+      return this.unit === 'F' ? DRY_TEMP_F : DRY_TEMP_C;
     }
     const list = this.unit === 'F' ? TEMP_PRESETS_F : TEMP_PRESETS_C;
     return list[this.tempIndex];
@@ -1418,9 +1424,7 @@ class Scheme2Controller {
     sound.playMode();
     this.mode = mode;
     this.editMode = 'none';
-    if (mode === 'dry') {
-      this.babyMode = false;
-    }
+    this.babyMode = false;
     this.resetInactivityTimer();
     this.render();
   }
@@ -1431,7 +1435,6 @@ class Scheme2Controller {
     this.babyMode = !this.babyMode;
     if (this.babyMode) {
       this.savedPreBabyTempIndex = this.tempIndex;
-      this.mode = 'heat';
       this.editMode = 'none';
     } else {
       this.tempIndex = this.savedPreBabyTempIndex;
@@ -1505,13 +1508,26 @@ class Scheme2Controller {
     const heatEl = this.root.querySelector('.pill-heat');
     const dryEl = this.root.querySelector('.pill-dry');
     const powerCenter = this.root.querySelector('.pill-power-center');
-    if (heatEl) heatEl.classList.toggle('active', this.mode === 'heat');
-    if (dryEl) dryEl.classList.toggle('active', this.mode === 'dry');
+    if (heatEl) {
+      heatEl.classList.toggle('active', this.mode === 'heat' && !isOff);
+      heatEl.classList.toggle('baby-mode', this.mode === 'heat' && this.babyMode && !isOff);
+    }
+    if (dryEl) {
+      dryEl.classList.toggle('active', this.mode === 'dry' && !isOff);
+      dryEl.classList.toggle('baby-mode', this.mode === 'dry' && this.babyMode && !isOff);
+    }
     if (powerCenter) powerCenter.classList.toggle('active', isRunning || this.power === 'standby');
 
     // Baby Mode Button
     const babyBtn = this.root.querySelector('.btn-baby-key');
-    if (babyBtn) babyBtn.classList.toggle('baby-active', this.babyMode);
+    if (babyBtn) {
+      babyBtn.classList.toggle('baby-active', this.babyMode && !isOff);
+      if (isOff) {
+        babyBtn.style.opacity = '0.05';
+      } else {
+        babyBtn.style.opacity = this.babyMode ? '1' : '0.45';
+      }
+    }
 
     // Left Button: [-] per Figma specification
     const leftBtnImg = this.root.querySelector('.btn-adjust-left img');
@@ -1641,7 +1657,13 @@ class Scheme3Controller {
 
   get currentTemp() {
     if (this.babyMode) {
+      if (this.mode === 'dry') {
+        return this.unit === 'F' ? BABY_DRY_TEMP_F : BABY_DRY_TEMP_C;
+      }
       return this.unit === 'F' ? BABY_TEMP_F : BABY_TEMP_C;
+    }
+    if (this.mode === 'dry') {
+      return this.unit === 'F' ? DRY_TEMP_F : DRY_TEMP_C;
     }
     const list = this.unit === 'F' ? TEMP_PRESETS_F : TEMP_PRESETS_C;
     return list[this.tempIndex];
@@ -1817,9 +1839,7 @@ class Scheme3Controller {
     sound.playMode();
     this.mode = mode;
     this.editMode = 'none';
-    if (mode === 'dry') {
-      this.babyMode = false;
-    }
+    this.babyMode = false;
     this.resetInactivityTimer();
     this.render();
   }
@@ -1830,7 +1850,6 @@ class Scheme3Controller {
     this.babyMode = !this.babyMode;
     if (this.babyMode) {
       this.savedPreBabyTempIndex = this.tempIndex;
-      this.mode = 'heat';
       this.editMode = 'none';
     } else {
       this.tempIndex = this.savedPreBabyTempIndex;
@@ -1896,9 +1915,22 @@ class Scheme3Controller {
     const heatEl = this.root.querySelector('.pill-heat');
     const dryEl = this.root.querySelector('.pill-dry');
     const babyCenter = this.root.querySelector('.pill-baby-center');
-    if (heatEl) heatEl.classList.toggle('active', this.mode === 'heat');
-    if (dryEl) dryEl.classList.toggle('active', this.mode === 'dry');
-    if (babyCenter) babyCenter.classList.toggle('baby-active', this.babyMode);
+    if (heatEl) {
+      heatEl.classList.toggle('active', this.mode === 'heat' && !isOff);
+      heatEl.classList.toggle('baby-mode', this.mode === 'heat' && this.babyMode && !isOff);
+    }
+    if (dryEl) {
+      dryEl.classList.toggle('active', this.mode === 'dry' && !isOff);
+      dryEl.classList.toggle('baby-mode', this.mode === 'dry' && this.babyMode && !isOff);
+    }
+    if (babyCenter) {
+      babyCenter.classList.toggle('baby-active', this.babyMode && !isOff);
+      if (isOff) {
+        babyCenter.style.opacity = '0.05';
+      } else {
+        babyCenter.style.opacity = this.babyMode ? '1' : '0.45';
+      }
+    }
 
     // Independent buttons
     const timeBtn = this.root.querySelector('.s3-time-btn');
