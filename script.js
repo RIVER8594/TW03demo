@@ -4,28 +4,122 @@
  */
 
 // ==========================================
-// 1. Audio Synthesizer (Realistic Appliance Sound)
+// 1. Audio Engine (Realistic Appliance Sound)
 // ==========================================
 class SoundEngine {
   constructor() {
     this.ctx = null;
     this.muted = false;
+    this.soundUrl = 'sound/' + encodeURIComponent('叮的一声.wav');
+    this.audioBuffer = null;
+    this.audioPool = [];
+    this.poolSize = 8;
+    this.poolIndex = 0;
+    this.initAudio();
   }
 
-  init() {
-    if (!this.ctx) {
+  initAudio() {
+    // 1. Initialize HTMLAudioElement pool for instant local / file:// and web playback
+    if (typeof Audio !== 'undefined') {
+      try {
+        for (let i = 0; i < this.poolSize; i++) {
+          const a = new Audio(this.soundUrl);
+          a.preload = 'auto';
+          this.audioPool.push(a);
+        }
+      } catch (e) {
+        console.warn('Audio pool initialization failed', e);
+      }
+    }
+
+    // 2. Pre-fetch for Web Audio API buffer if running in HTTP/HTTPS environment
+    try {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (AudioCtx) this.ctx = new AudioCtx();
-    }
+      if (AudioCtx) {
+        this.ctx = new AudioCtx();
+        if (typeof fetch === 'function') {
+          fetch(this.soundUrl)
+            .then(res => {
+              if (!res.ok) throw new Error('Network error');
+              return res.arrayBuffer();
+            })
+            .then(buf => this.ctx.decodeAudioData(buf))
+            .then(decoded => {
+              this.audioBuffer = decoded;
+            })
+            .catch(() => {
+              // file:// protocol or fetch blocked; Audio element pool handles playback
+            });
+        }
+      }
+    } catch (_) {}
+  }
+
+  unlockAudio() {
     if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume();
+      this.ctx.resume().catch(() => {});
     }
+  }
+
+  playDing() {
+    if (this.muted) return;
+    this.unlockAudio();
+
+    // 1. Web Audio API playback (zero latency, clean concurrent overlaps)
+    if (this.ctx && this.audioBuffer) {
+      try {
+        const source = this.ctx.createBufferSource();
+        const gain = this.ctx.createGain();
+        gain.gain.value = 0.9;
+        source.buffer = this.audioBuffer;
+        source.connect(gain);
+        gain.connect(this.ctx.destination);
+        source.start(0);
+        return;
+      } catch (e) {
+        // Fallback to pool
+      }
+    }
+
+    // 2. HTMLAudioElement pool playback
+    if (this.audioPool && this.audioPool.length > 0) {
+      try {
+        const audio = this.audioPool[this.poolIndex];
+        this.poolIndex = (this.poolIndex + 1) % this.audioPool.length;
+        audio.currentTime = 0;
+        audio.volume = 0.9;
+        const p = audio.play();
+        if (p && typeof p.catch === 'function') {
+          p.catch(() => {});
+        }
+        return;
+      } catch (_) {}
+    }
+
+    // 3. Fallback synthesizer if file cannot be played
+    this.playBeep(1600, 0.03, 'sine', 0.15);
+  }
+
+  playClick() {
+    this.playDing();
+  }
+
+  playPower(on = true) {
+    this.playDing();
+  }
+
+  playMode() {
+    this.playDing();
+  }
+
+  playAlert() {
+    this.playDing();
   }
 
   playBeep(freq = 1400, duration = 0.035, type = 'sine', gainVal = 0.15) {
     if (this.muted) return;
     try {
-      this.init();
+      this.unlockAudio();
       if (!this.ctx) return;
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
@@ -37,46 +131,7 @@ class SoundEngine {
       gain.connect(this.ctx.destination);
       osc.start();
       osc.stop(this.ctx.currentTime + duration);
-    } catch (e) {
-      console.warn('Audio play error', e);
-    }
-  }
-
-  playClick() {
-    this.playBeep(1600, 0.025, 'sine', 0.12);
-  }
-
-  playPower(on = true) {
-    if (this.muted) return;
-    try {
-      this.init();
-      if (!this.ctx) return;
-      const now = this.ctx.currentTime;
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = 'triangle';
-      if (on) {
-        osc.frequency.setValueAtTime(880, now);
-        osc.frequency.exponentialRampToValueAtTime(1760, now + 0.12);
-      } else {
-        osc.frequency.setValueAtTime(1760, now);
-        osc.frequency.exponentialRampToValueAtTime(880, now + 0.14);
-      }
-      gain.gain.setValueAtTime(0.2, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      osc.start();
-      osc.stop(now + 0.15);
     } catch (e) {}
-  }
-
-  playMode() {
-    this.playBeep(1200, 0.04, 'sine', 0.15);
-  }
-
-  playAlert() {
-    this.playBeep(2200, 0.08, 'square', 0.15);
   }
 }
 
