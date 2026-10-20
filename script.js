@@ -240,10 +240,11 @@ class Scheme1Controller {
     if (powerBtn) {
       const startP = (e) => this.handlePowerDown(e);
       const endP = (e) => this.handlePowerUp(e);
+      const cancelP = () => this.handlePowerCancel();
       powerBtn.addEventListener('mousedown', startP);
       powerBtn.addEventListener('touchstart', startP, { passive: true });
       powerBtn.addEventListener('mouseup', endP);
-      powerBtn.addEventListener('mouseleave', endP);
+      powerBtn.addEventListener('mouseleave', cancelP);
       powerBtn.addEventListener('touchend', endP);
     }
 
@@ -252,10 +253,11 @@ class Scheme1Controller {
     if (heatBtn) {
       const startH = (e) => this.handleHeatDown(e);
       const endH = (e) => this.handleHeatUp(e);
+      const cancelH = () => this.handleHeatCancel();
       heatBtn.addEventListener('mousedown', startH);
       heatBtn.addEventListener('touchstart', startH, { passive: true });
       heatBtn.addEventListener('mouseup', endH);
-      heatBtn.addEventListener('mouseleave', endH);
+      heatBtn.addEventListener('mouseleave', cancelH);
       heatBtn.addEventListener('touchend', endH);
     }
 
@@ -274,10 +276,11 @@ class Scheme1Controller {
     if (compBtn) {
       const startC = (e) => this.handleCompDown(e);
       const endC = (e) => this.handleCompUp(e);
+      const cancelC = () => this.handleCompCancel();
       compBtn.addEventListener('mousedown', startC);
       compBtn.addEventListener('touchstart', startC, { passive: true });
       compBtn.addEventListener('mouseup', endC);
-      compBtn.addEventListener('mouseleave', endC);
+      compBtn.addEventListener('mouseleave', cancelC);
       compBtn.addEventListener('touchend', endC);
     }
 
@@ -286,10 +289,11 @@ class Scheme1Controller {
     if (babyBtn) {
       const startB = (e) => this.handleBabyDown(e);
       const endB = (e) => this.handleBabyUp(e);
+      const cancelB = () => this.handleBabyCancel();
       babyBtn.addEventListener('mousedown', startB);
       babyBtn.addEventListener('touchstart', startB, { passive: true });
       babyBtn.addEventListener('mouseup', endB);
-      babyBtn.addEventListener('mouseleave', endB);
+      babyBtn.addEventListener('mouseleave', cancelB);
       babyBtn.addEventListener('touchend', endB);
     }
 
@@ -384,12 +388,21 @@ class Scheme1Controller {
     }, 1500);
   }
 
+  handlePowerCancel() {
+    clearTimeout(this.powerPressTimer);
+    this.powerPressStart = 0;
+  }
+
   handlePowerUp(e) {
     if (e) e.stopPropagation();
     clearTimeout(this.powerPressTimer);
-    if (this.powerLongPressed) return;
+    if (this.powerLongPressed) {
+      this.powerPressStart = 0;
+      return;
+    }
 
-    if (Date.now() - this.powerPressStart < 1500) {
+    if (this.powerPressStart && Date.now() - this.powerPressStart < 1500) {
+      this.powerPressStart = 0;
       // Short click on Power/Start
       if (this.power === 'off') {
         // In power-off state, short click has no action (must long-press 1.5s to turn on)
@@ -398,6 +411,7 @@ class Scheme1Controller {
       if (this.interceptLockedOrLowPower()) return;
       this.handleStartPauseClick();
     }
+    this.powerPressStart = 0;
   }
 
   togglePowerOnOff() {
@@ -556,13 +570,23 @@ class Scheme1Controller {
     }
   }
 
+  handleHeatCancel() {
+    clearTimeout(this.heatPressTimer);
+    this.heatPressStart = 0;
+  }
+
   handleHeatUp(e) {
     if (e) e.stopPropagation();
     clearTimeout(this.heatPressTimer);
-    if (this.heatLongPressed) return;
-    if (Date.now() - this.heatPressStart < 2000) {
+    if (this.heatLongPressed) {
+      this.heatPressStart = 0;
+      return;
+    }
+    if (this.heatPressStart && Date.now() - this.heatPressStart < 2000) {
+      this.heatPressStart = 0;
       this.selectMode('heat');
     }
+    this.heatPressStart = 0;
   }
 
   selectMode(newMode) {
@@ -608,14 +632,24 @@ class Scheme1Controller {
     }, 2000);
   }
 
+  handleCompCancel() {
+    clearTimeout(this.compPressTimer);
+    this.compPressStart = 0;
+  }
+
   handleCompUp(e) {
     if (e) e.stopPropagation();
     clearTimeout(this.compPressTimer);
-    if (this.compLongPressed) return;
+    if (this.compLongPressed) {
+      this.compPressStart = 0;
+      return;
+    }
 
-    if (Date.now() - this.compPressStart < 2000) {
+    if (this.compPressStart && Date.now() - this.compPressStart < 2000) {
+      this.compPressStart = 0;
       this.handleCompClick();
     }
+    this.compPressStart = 0;
   }
 
   handleCompClick() {
@@ -716,15 +750,25 @@ class Scheme1Controller {
     }, 2000);
   }
 
+  handleBabyCancel() {
+    clearTimeout(this.babyPressTimer);
+    this.babyPressStart = 0;
+  }
+
   handleBabyUp(e) {
     if (e) e.stopPropagation();
     clearTimeout(this.babyPressTimer);
-    if (this.babyLongPressed) return;
+    if (this.babyLongPressed) {
+      this.babyPressStart = 0;
+      return;
+    }
 
-    if (Date.now() - this.babyPressStart < 2000) {
+    if (this.babyPressStart && Date.now() - this.babyPressStart < 2000) {
+      this.babyPressStart = 0;
       if (this.interceptLockedOrLowPower()) return;
       this.toggleBabyMode();
     }
+    this.babyPressStart = 0;
   }
 
   toggleChildLock() {
@@ -1198,7 +1242,10 @@ class Scheme2Controller {
       powerBtn.addEventListener('mousedown', () => this.handlePowerPressStart());
       powerBtn.addEventListener('touchstart', () => this.handlePowerPressStart(), { passive: true });
       powerBtn.addEventListener('mouseup', () => this.handlePowerPressEnd());
-      powerBtn.addEventListener('mouseleave', () => clearTimeout(this.powerPressTimer));
+      powerBtn.addEventListener('mouseleave', () => {
+        clearTimeout(this.powerPressTimer);
+        this.powerPressStartTime = 0;
+      });
       powerBtn.addEventListener('touchend', () => this.handlePowerPressEnd());
     }
 
@@ -1268,9 +1315,10 @@ class Scheme2Controller {
 
   handlePowerPressEnd() {
     clearTimeout(this.powerPressTimer);
-    if (!this.powerLongPressed && Date.now() - this.powerPressStartTime < 1200) {
+    if (!this.powerLongPressed && this.powerPressStartTime && Date.now() - this.powerPressStartTime < 1200) {
       this.toggleStartPause();
     }
+    this.powerPressStartTime = 0;
   }
 
   toggleOnOff() {
@@ -1612,7 +1660,10 @@ class Scheme3Controller {
       powerBtn.addEventListener('mousedown', () => this.handlePowerPressStart());
       powerBtn.addEventListener('touchstart', () => this.handlePowerPressStart(), { passive: true });
       powerBtn.addEventListener('mouseup', () => this.handlePowerPressEnd());
-      powerBtn.addEventListener('mouseleave', () => clearTimeout(this.powerPressTimer));
+      powerBtn.addEventListener('mouseleave', () => {
+        clearTimeout(this.powerPressTimer);
+        this.powerPressStartTime = 0;
+      });
       powerBtn.addEventListener('touchend', () => this.handlePowerPressEnd());
     }
 
@@ -1676,9 +1727,10 @@ class Scheme3Controller {
 
   handlePowerPressEnd() {
     clearTimeout(this.powerPressTimer);
-    if (!this.powerLongPressed && Date.now() - this.powerPressStartTime < 1200) {
+    if (!this.powerLongPressed && this.powerPressStartTime && Date.now() - this.powerPressStartTime < 1200) {
       this.toggleStartPause();
     }
+    this.powerPressStartTime = 0;
   }
 
   toggleOnOff() {

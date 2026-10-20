@@ -264,8 +264,31 @@
       background: linear-gradient(90deg, #f7971e, #ffd200);
     }
 
+    /* Side Slider Touch Zones (Left 16%: Scale, Right 16%: Lightness) */
+    .side-slider-zone {
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      width: 16%;
+      z-index: 50;
+      cursor: ns-resize;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .side-slider-left {
+      left: 0;
+    }
+    .side-slider-right {
+      right: 0;
+    }
+
   </style>
 <body>
+
+  <!-- Side Slider Touch Zones (Left: Scale, Right: Lightness) -->
+  <div class="side-slider-zone side-slider-left" id="zoneScale" title="上下滑动调节面板缩放 (双击重置 100%)"></div>
+  <div class="side-slider-zone side-slider-right" id="zoneLightness" title="上下滑动调节背景明暗 (双击重置)"></div>
 
   <!-- Floating HUD Indicator Pills (Auto hide after 3s) -->
   <div class="hud-pill hud-pill-left" id="hudScale">
@@ -612,6 +635,15 @@
         }
       }
 
+      // Helper: determine gesture mode from pointer X position
+      function getSliderMode(e) {
+        const x = e.clientX;
+        const w = window.innerWidth;
+        if (x <= w * 0.16) return 'scale';
+        if (x >= w * 0.84) return 'lightness';
+        return null;
+      }
+
       // Pointer Drag Handling (Mouse drag and touch drag)
       let isPointerDown = false;
       let startX = 0;
@@ -619,6 +651,7 @@
       let activeMode = null; // 'scale' | 'lightness'
       let initialVal = 0;
       let hasDragged = false;
+      let capturedTarget = null;
 
       window.addEventListener('pointerdown', (e) => {
         // If clicking on interactive UI buttons or header trigger, don't hijack
@@ -626,18 +659,24 @@
           return;
         }
 
+        const mode = getSliderMode(e);
+        if (!mode) return; // Only trigger in the left 16% (scale) or right 16% (lightness) red boxes
+
         isPointerDown = true;
         hasDragged = false;
         startX = e.clientX;
         startY = e.clientY;
-
-        const isLeft = startX < window.innerWidth / 2;
-        activeMode = isLeft ? 'scale' : 'lightness';
+        activeMode = mode;
         initialVal = activeMode === 'scale' ? currentScale : currentLightness;
+        capturedTarget = e.target;
+
+        if (capturedTarget && capturedTarget.setPointerCapture) {
+          try { capturedTarget.setPointerCapture(e.pointerId); } catch (_) {}
+        }
       });
 
       window.addEventListener('pointermove', (e) => {
-        if (!isPointerDown) return;
+        if (!isPointerDown || !activeMode) return;
 
         const dy = startY - e.clientY; // upward is positive (increase), downward is negative (decrease)
         const dx = e.clientX - startX;
@@ -659,37 +698,48 @@
         }
       }, { passive: false });
 
-      window.addEventListener('pointerup', () => {
-        isPointerDown = false;
+      window.addEventListener('pointerup', (e) => {
+        if (isPointerDown) {
+          isPointerDown = false;
+          activeMode = null;
+          if (capturedTarget && capturedTarget.releasePointerCapture) {
+            try { capturedTarget.releasePointerCapture(e.pointerId); } catch (_) {}
+          }
+          capturedTarget = null;
+        }
       });
 
       window.addEventListener('pointercancel', () => {
         isPointerDown = false;
+        activeMode = null;
+        capturedTarget = null;
       });
 
-      // Mouse Wheel Handling
+      // Mouse Wheel Handling (Only active inside left or right 16% zones)
       window.addEventListener('wheel', (e) => {
         if (e.target.closest('.app-header')) return;
-        e.preventDefault();
 
-        const isLeft = e.clientX < window.innerWidth / 2;
+        const mode = getSliderMode(e);
+        if (!mode) return; // Ignore wheel in center area
+
+        e.preventDefault();
         const delta = -Math.sign(e.deltaY); // scroll up: +1, scroll down: -1
 
-        if (isLeft) {
+        if (mode === 'scale') {
           updateScale(currentScale + delta * 0.05, true);
-        } else {
+        } else if (mode === 'lightness') {
           updateLightness(currentLightness + delta * 3, true);
         }
       }, { passive: false });
 
-      // Double click to quickly reset
+      // Double click to quickly reset (only active inside left or right 16% zones)
       window.addEventListener('dblclick', (e) => {
         if (e.target.closest('.btn-touch, .nav-tab, #topTrigger, .app-header')) return;
-        const isLeft = e.clientX < window.innerWidth / 2;
-        if (isLeft) {
+        const mode = getSliderMode(e);
+        if (mode === 'scale') {
           updateScale(1.0, true);
-        } else {
-          updateLightness(86, true);
+        } else if (mode === 'lightness') {
+          updateLightness(50, true);
         }
       });
     });
