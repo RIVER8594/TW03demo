@@ -443,23 +443,19 @@ body.is-embedded .device-wrapper {
 /* ---------------- Scheme 1 Flame & Dots Indicator ---------------- */
 .s1-indicator-bar {
   position: absolute;
-  left: 42.52%;
-  top: 53.45%;
-  width: 14.96%;
+  left: 50%;
+  top: 53.60%;
+  width: 11.22%;
   height: 1.44%;
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
   justify-content: space-between;
-}
-
-.dots-group {
-  display: flex;
-  align-items: center;
-  gap: clamp(4px, 0.45vw, 14px);
+  pointer-events: none;
 }
 
 .indicator-dot {
-  width: clamp(3px, 0.45vw, 10px);
+  width: clamp(3px, 0.32vw, 7px);
   aspect-ratio: 1;
   border-radius: 50%;
   background: #ffffff;
@@ -469,20 +465,23 @@ body.is-embedded .device-wrapper {
 
 .indicator-dot.active {
   opacity: 1;
-  background: #ffcc00;
-  box-shadow: 0 0 8px #ffcc00;
+  background: #fecb09;
+  box-shadow: 0 0 5px rgba(254, 203, 9, 0.8), 0 0 8px rgba(254, 203, 9, 0.4);
 }
 
 .indicator-flame {
-  width: clamp(10px, 1.2vw, 24px);
-  aspect-ratio: 1;
-  opacity: 0.25;
+  width: clamp(8px, 0.72vw, 15px);
+  height: clamp(10px, 0.90vw, 19px);
+  color: #ffffff;
+  opacity: 0.15;
   transition: all 0.3s ease;
+  display: block;
 }
 
 .indicator-flame.active {
   opacity: 1;
-  filter: drop-shadow(0 0 10px #ff9800) drop-shadow(0 0 16px #ffcc00);
+  color: #fecb09;
+  filter: drop-shadow(0 0 5px rgba(254, 203, 9, 0.85)) drop-shadow(0 0 10px rgba(254, 203, 9, 0.4));
 }
 
 /* ---------------- Scheme 2 & 3 Yellow Divider Line & Sweeping Animation ---------------- */
