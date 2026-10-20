@@ -649,6 +649,7 @@ body.is-embedded .device-wrapper {
 }
 
 .btn-adjust-left.active, .btn-adjust-right.active,
+.s2-adjust-left.active, .s2-adjust-right.active,
 .s3-adjust-left.active, .s3-adjust-right.active {
   opacity: 1 !important;
   visibility: visible !important;
@@ -656,11 +657,19 @@ body.is-embedded .device-wrapper {
   filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.7));
 }
 
+.btn-adjust-left.disabled, .btn-adjust-right.disabled,
+.s2-adjust-left.disabled, .s2-adjust-right.disabled,
+.s3-adjust-left.disabled, .s3-adjust-right.disabled,
 .btn-adjust-left.active.disabled, .btn-adjust-right.active.disabled,
-.s3-adjust-left.active.disabled, .s3-adjust-right.active.disabled {
-  opacity: 0.12 !important;
-  cursor: not-allowed;
+.s2-adjust-left.active.disabled, .s2-adjust-right.active.disabled,
+.s3-adjust-left.active.disabled, .s3-adjust-right.active.disabled,
+.btn-adjust-left:not(.active), .btn-adjust-right:not(.active),
+.s2-adjust-left:not(.active), .s2-adjust-right:not(.active),
+.s3-adjust-left:not(.active), .s3-adjust-right:not(.active) {
+  opacity: 0 !important;
+  visibility: hidden !important;
   pointer-events: none !important;
+  cursor: default !important;
 }
 
 /* Running State: Hide all adjust and secondary buttons completely (except baby-active if activated) */

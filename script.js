@@ -853,6 +853,8 @@ class Scheme1Controller {
     if (this.isSyntheticMouseEvent(e)) return;
     if (e) e.stopPropagation();
     if (this.interceptLockedOrLowPower()) return;
+    if (this.power === 'off' || this.power === 'running' || this.power === 'paused' || this.power === 'reserved') return;
+    if (this.editMode === 'none') return;
     this.adjustValue(delta);
 
     // Continuous stepping after 0.5s hold (step every 0.5s)
@@ -875,26 +877,20 @@ class Scheme1Controller {
   }
 
   adjustValue(delta) {
+    if (this.power === 'off' || this.power === 'running' || this.power === 'paused' || this.power === 'reserved') return;
+    if (this.editMode === 'none') return;
     sound.playClick();
     this.resetEditInactivityTimer();
 
-    if (this.power === 'paused') {
-      this.power = 'standby';
-      this.stopRunning();
-      this.editMode = 'time';
-    }
-
     // In reservation mode
     if (this.editMode === 'reservation') {
-      const len = RESERVATION_PRESETS.length;
-      this.reserveIndex = (this.reserveIndex + delta + len) % len;
+      const max = RESERVATION_PRESETS.length - 1;
+      const next = this.reserveIndex + delta;
+      if (next >= 0 && next <= max) {
+        this.reserveIndex = next;
+      }
       this.render();
       return;
-    }
-
-    // If in standby and not editing, start editing current display
-    if (this.editMode === 'none') {
-      this.editMode = this.standbyParam;
     }
 
     if (this.editMode === 'temp') {
@@ -1076,93 +1072,89 @@ class Scheme1Controller {
 
   renderAdjustButtons(minusBtn, plusBtn, isOff, isRunning) {
     if (!minusBtn || !plusBtn) return;
-    if (isOff || isRunning || this.power === 'reserved') {
-      minusBtn.classList.remove('active', 'disabled');
-      plusBtn.classList.remove('active', 'disabled');
-      minusBtn.style.opacity = '0';
-      plusBtn.style.opacity = '0';
-      minusBtn.style.visibility = 'hidden';
-      plusBtn.style.visibility = 'hidden';
-      minusBtn.style.pointerEvents = 'none';
-      plusBtn.style.pointerEvents = 'none';
+
+    const hide = (btn) => {
+      btn.classList.remove('active');
+      btn.classList.add('disabled');
+      btn.style.setProperty('opacity', '0', 'important');
+      btn.style.setProperty('visibility', 'hidden', 'important');
+      btn.style.setProperty('pointer-events', 'none', 'important');
+    };
+
+    const show = (btn) => {
+      btn.classList.remove('disabled');
+      btn.classList.add('active');
+      btn.style.setProperty('opacity', '1', 'important');
+      btn.style.setProperty('visibility', 'visible', 'important');
+      btn.style.setProperty('pointer-events', 'auto', 'important');
+    };
+
+    if (isOff || isRunning || this.power === 'reserved' || this.power === 'paused' || this.editMode === 'none') {
+      hide(minusBtn);
+      hide(plusBtn);
       return;
     }
 
-    // In reservation edit
+    // 1. In reservation edit
     if (this.editMode === 'reservation') {
-      minusBtn.classList.remove('disabled');
-      plusBtn.classList.remove('disabled');
-      minusBtn.classList.add('active');
-      plusBtn.classList.add('active');
-      minusBtn.style.opacity = '';
-      plusBtn.style.opacity = '';
-      minusBtn.style.visibility = 'visible';
-      plusBtn.style.visibility = 'visible';
-      minusBtn.style.pointerEvents = '';
-      plusBtn.style.pointerEvents = '';
+      const max = RESERVATION_PRESETS.length - 1;
+      if (this.reserveIndex <= 0) hide(minusBtn);
+      else show(minusBtn);
+
+      if (this.reserveIndex >= max) hide(plusBtn);
+      else show(plusBtn);
       return;
     }
 
-    // If editing temp
+    // 2. If editing temp
     if (this.editMode === 'temp') {
-      minusBtn.classList.add('active');
-      plusBtn.classList.add('active');
-      minusBtn.style.opacity = '';
-      plusBtn.style.opacity = '';
-      minusBtn.style.visibility = 'visible';
-      plusBtn.style.visibility = 'visible';
-      minusBtn.style.pointerEvents = '';
-      plusBtn.style.pointerEvents = '';
+      // In Dry mode or Baby mode, temperature is fixed and cannot be adjusted at all!
       if (this.mode === 'dry' || this.babyMode) {
-        minusBtn.classList.add('disabled');
-        plusBtn.classList.add('disabled');
-      } else {
-        const max = (this.unit === 'F' ? TEMP_PRESETS_F : TEMP_PRESETS_C).length - 1;
-        minusBtn.classList.toggle('disabled', this.tempIndex === 0);
-        plusBtn.classList.toggle('disabled', this.tempIndex === max);
+        hide(minusBtn);
+        hide(plusBtn);
+        return;
       }
+      const max = (this.unit === 'F' ? TEMP_PRESETS_F : TEMP_PRESETS_C).length - 1;
+      if (this.tempIndex <= 0) hide(minusBtn);
+      else show(minusBtn);
+
+      if (this.tempIndex >= max) hide(plusBtn);
+      else show(plusBtn);
       return;
     }
 
-    // If editing time
+    // 3. If editing time
     if (this.editMode === 'time') {
-      minusBtn.classList.add('active');
-      plusBtn.classList.add('active');
-      minusBtn.style.opacity = '';
-      plusBtn.style.opacity = '';
-      minusBtn.style.visibility = 'visible';
-      plusBtn.style.visibility = 'visible';
-      minusBtn.style.pointerEvents = '';
-      plusBtn.style.pointerEvents = '';
+      let atMin = false;
+      let atMax = false;
       if (this.babyMode) {
         if (this.mode === 'heat') {
-          minusBtn.classList.toggle('disabled', this.babyHeatTimeIndex === 0);
-          plusBtn.classList.toggle('disabled', this.babyHeatTimeIndex === BABY_HEAT_TIME_PRESETS.length - 1);
+          atMin = this.babyHeatTimeIndex <= 0;
+          atMax = this.babyHeatTimeIndex >= BABY_HEAT_TIME_PRESETS.length - 1;
         } else {
-          minusBtn.classList.toggle('disabled', this.babyDryTimeIndex === 0);
-          plusBtn.classList.toggle('disabled', this.babyDryTimeIndex === BABY_DRY_TIME_PRESETS.length - 1);
+          atMin = this.babyDryTimeIndex <= 0;
+          atMax = this.babyDryTimeIndex >= BABY_DRY_TIME_PRESETS.length - 1;
         }
       } else {
         if (this.mode === 'heat') {
-          minusBtn.classList.toggle('disabled', this.heatTimeIndex === 0);
-          plusBtn.classList.toggle('disabled', this.heatTimeIndex === HEAT_TIME_PRESETS.length - 1);
+          atMin = this.heatTimeIndex <= 0;
+          atMax = this.heatTimeIndex >= HEAT_TIME_PRESETS.length - 1;
         } else {
-          minusBtn.classList.toggle('disabled', this.dryTimeIndex === 0);
-          plusBtn.classList.toggle('disabled', this.dryTimeIndex === DRY_TIME_PRESETS.length - 1);
+          atMin = this.dryTimeIndex <= 0;
+          atMax = this.dryTimeIndex >= DRY_TIME_PRESETS.length - 1;
         }
       }
+
+      if (atMin) hide(minusBtn);
+      else show(minusBtn);
+
+      if (atMax) hide(plusBtn);
+      else show(plusBtn);
       return;
     }
 
-    // In normal standby (non-editing), buttons should be off
-    minusBtn.classList.remove('disabled', 'active');
-    plusBtn.classList.remove('disabled', 'active');
-    minusBtn.style.opacity = '0';
-    plusBtn.style.opacity = '0';
-    minusBtn.style.visibility = 'hidden';
-    plusBtn.style.visibility = 'hidden';
-    minusBtn.style.pointerEvents = 'none';
-    plusBtn.style.pointerEvents = 'none';
+    hide(minusBtn);
+    hide(plusBtn);
   }
 
   renderTabs(isOff, isRunning) {
@@ -1599,49 +1591,104 @@ class Scheme2Controller {
   }
 
   handleLeftAdjust() {
-    if (this.power === 'off') return;
-    if (this.power === 'paused') {
-      this.power = 'standby';
-      this.stopRunning();
-      this.editMode = 'time';
-    }
-    if (this.editMode === 'none') {
-      this.editMode = 'time';
-    }
+    if (this.power === 'off' || this.power === 'running' || this.power === 'paused') return;
+    if (this.editMode === 'none') return;
     this.adjustParam(-1);
   }
 
   adjustParam(delta) {
-    if (this.power === 'off') return;
+    if (this.power === 'off' || this.power === 'running' || this.power === 'paused') return;
+    if (this.editMode === 'none') return;
     sound.playClick();
     this.resetInactivityTimer();
 
-    if (this.power === 'paused') {
-      this.power = 'standby';
-      this.stopRunning();
-      this.editMode = 'time';
-    }
-
-    if (this.editMode === 'none') {
-      this.editMode = 'time';
-    }
-
     if (this.editMode === 'temp') {
-      if (this.babyMode) return;
-      const max = (this.unit === 'F' ? TEMP_PRESETS_F : TEMP_PRESETS_C).length;
-      this.tempIndex = (this.tempIndex + delta + max) % max;
+      if (this.babyMode || this.mode === 'dry') return;
+      const max = (this.unit === 'F' ? TEMP_PRESETS_F : TEMP_PRESETS_C).length - 1;
+      const next = this.tempIndex + delta;
+      if (next >= 0 && next <= max) {
+        this.tempIndex = next;
+      }
     } else if (this.editMode === 'time') {
       if (this.mode === 'heat') {
-        const max = HEAT_TIME_PRESETS.length;
-        this.heatTimeIndex = (this.heatTimeIndex + delta + max) % max;
+        const max = HEAT_TIME_PRESETS.length - 1;
+        const next = this.heatTimeIndex + delta;
+        if (next >= 0 && next <= max) {
+          this.heatTimeIndex = next;
+        }
       } else {
+        const max = DRY_TIME_PRESETS.length - 1;
         const next = this.dryTimeIndex + delta;
-        if (next >= 0 && next < DRY_TIME_PRESETS.length) {
+        if (next >= 0 && next <= max) {
           this.dryTimeIndex = next;
         }
       }
     }
     this.render();
+  }
+
+  renderAdjustButtons(leftBtn, rightBtn, isOff, isRunning) {
+    if (!leftBtn || !rightBtn) return;
+
+    const hide = (btn) => {
+      btn.classList.remove('active');
+      btn.classList.add('disabled');
+      btn.style.setProperty('opacity', '0', 'important');
+      btn.style.setProperty('visibility', 'hidden', 'important');
+      btn.style.setProperty('pointer-events', 'none', 'important');
+    };
+
+    const show = (btn) => {
+      btn.classList.remove('disabled');
+      btn.classList.add('active');
+      btn.style.setProperty('opacity', '1', 'important');
+      btn.style.setProperty('visibility', 'visible', 'important');
+      btn.style.setProperty('pointer-events', 'auto', 'important');
+    };
+
+    if (isOff || isRunning || this.power === 'paused' || this.editMode === 'none') {
+      hide(leftBtn);
+      hide(rightBtn);
+      return;
+    }
+
+    if (this.editMode === 'temp') {
+      // Fixed temp in dry mode or baby mode: cannot be adjusted at all!
+      if (this.mode === 'dry' || this.babyMode) {
+        hide(leftBtn);
+        hide(rightBtn);
+        return;
+      }
+      const max = (this.unit === 'F' ? TEMP_PRESETS_F : TEMP_PRESETS_C).length - 1;
+      if (this.tempIndex <= 0) hide(leftBtn);
+      else show(leftBtn);
+
+      if (this.tempIndex >= max) hide(rightBtn);
+      else show(rightBtn);
+      return;
+    }
+
+    if (this.editMode === 'time') {
+      let atMin = false;
+      let atMax = false;
+      if (this.mode === 'heat') {
+        atMin = this.heatTimeIndex <= 0;
+        atMax = this.heatTimeIndex >= HEAT_TIME_PRESETS.length - 1;
+      } else {
+        atMin = this.dryTimeIndex <= 0;
+        atMax = this.dryTimeIndex >= DRY_TIME_PRESETS.length - 1;
+      }
+
+      if (atMin) hide(leftBtn);
+      else show(leftBtn);
+
+      if (atMax) hide(rightBtn);
+      else show(rightBtn);
+      return;
+    }
+
+    hide(leftBtn);
+    hide(rightBtn);
   }
 
   resetInactivityTimer() {
@@ -1733,24 +1780,7 @@ class Scheme2Controller {
     // Left Button [-] and Right Button [+]
     const leftBtn = this.root.querySelector('.btn-adjust-left');
     const rightBtn = this.root.querySelector('.btn-adjust-right');
-    if (leftBtn) {
-      if (isOff || isRunning) {
-        leftBtn.style.opacity = '0';
-        leftBtn.style.pointerEvents = 'none';
-      } else {
-        leftBtn.style.opacity = this.editMode !== 'none' ? '1' : '0.45';
-        leftBtn.style.pointerEvents = this.editMode !== 'none' ? 'auto' : 'none';
-      }
-    }
-    if (rightBtn) {
-      if (isOff || isRunning) {
-        rightBtn.style.opacity = '0';
-        rightBtn.style.pointerEvents = 'none';
-      } else {
-        rightBtn.style.opacity = this.editMode !== 'none' ? '1' : '0.45';
-        rightBtn.style.pointerEvents = this.editMode !== 'none' ? 'auto' : 'none';
-      }
-    }
+    this.renderAdjustButtons(leftBtn, rightBtn, isOff, isRunning);
 
     // Bottom Composite Key icon states from images/时间:温度icon/
     const compBtn = this.root.querySelector('.btn-composite-key');
@@ -2140,36 +2170,98 @@ class Scheme3Controller {
   }
 
   adjustParam(delta) {
-    if (this.power === 'off') return;
+    if (this.power === 'off' || this.power === 'running' || this.power === 'paused') return;
+    if (this.editMode === 'none') return;
     sound.playClick();
     this.resetInactivityTimer();
 
-    if (this.power === 'paused') {
-      this.power = 'standby';
-      this.stopRunning();
-      this.editMode = 'time';
-    }
-
-    if (this.editMode === 'none') {
-      this.editMode = 'time';
-    }
-
     if (this.editMode === 'temp') {
-      if (this.babyMode) return;
-      const max = (this.unit === 'F' ? TEMP_PRESETS_F : TEMP_PRESETS_C).length;
-      this.tempIndex = (this.tempIndex + delta + max) % max;
+      if (this.babyMode || this.mode === 'dry') return;
+      const max = (this.unit === 'F' ? TEMP_PRESETS_F : TEMP_PRESETS_C).length - 1;
+      const next = this.tempIndex + delta;
+      if (next >= 0 && next <= max) {
+        this.tempIndex = next;
+      }
     } else if (this.editMode === 'time') {
       if (this.mode === 'heat') {
-        const max = HEAT_TIME_PRESETS.length;
-        this.heatTimeIndex = (this.heatTimeIndex + delta + max) % max;
+        const max = HEAT_TIME_PRESETS.length - 1;
+        const next = this.heatTimeIndex + delta;
+        if (next >= 0 && next <= max) {
+          this.heatTimeIndex = next;
+        }
       } else {
+        const max = DRY_TIME_PRESETS.length - 1;
         const next = this.dryTimeIndex + delta;
-        if (next >= 0 && next < DRY_TIME_PRESETS.length) {
+        if (next >= 0 && next <= max) {
           this.dryTimeIndex = next;
         }
       }
     }
     this.render();
+  }
+
+  renderAdjustButtons(leftBtn, rightBtn, isOff, isRunning) {
+    if (!leftBtn || !rightBtn) return;
+
+    const hide = (btn) => {
+      btn.classList.remove('active');
+      btn.classList.add('disabled');
+      btn.style.setProperty('opacity', '0', 'important');
+      btn.style.setProperty('visibility', 'hidden', 'important');
+      btn.style.setProperty('pointer-events', 'none', 'important');
+    };
+
+    const show = (btn) => {
+      btn.classList.remove('disabled');
+      btn.classList.add('active');
+      btn.style.setProperty('opacity', '1', 'important');
+      btn.style.setProperty('visibility', 'visible', 'important');
+      btn.style.setProperty('pointer-events', 'auto', 'important');
+    };
+
+    if (isOff || isRunning || this.power === 'paused' || this.editMode === 'none') {
+      hide(leftBtn);
+      hide(rightBtn);
+      return;
+    }
+
+    if (this.editMode === 'temp') {
+      // Fixed temp in dry mode or baby mode: cannot be adjusted at all!
+      if (this.mode === 'dry' || this.babyMode) {
+        hide(leftBtn);
+        hide(rightBtn);
+        return;
+      }
+      const max = (this.unit === 'F' ? TEMP_PRESETS_F : TEMP_PRESETS_C).length - 1;
+      if (this.tempIndex <= 0) hide(leftBtn);
+      else show(leftBtn);
+
+      if (this.tempIndex >= max) hide(rightBtn);
+      else show(rightBtn);
+      return;
+    }
+
+    if (this.editMode === 'time') {
+      let atMin = false;
+      let atMax = false;
+      if (this.mode === 'heat') {
+        atMin = this.heatTimeIndex <= 0;
+        atMax = this.heatTimeIndex >= HEAT_TIME_PRESETS.length - 1;
+      } else {
+        atMin = this.dryTimeIndex <= 0;
+        atMax = this.dryTimeIndex >= DRY_TIME_PRESETS.length - 1;
+      }
+
+      if (atMin) hide(leftBtn);
+      else show(leftBtn);
+
+      if (atMax) hide(rightBtn);
+      else show(rightBtn);
+      return;
+    }
+
+    hide(leftBtn);
+    hide(rightBtn);
   }
 
   resetInactivityTimer() {
@@ -2291,24 +2383,7 @@ class Scheme3Controller {
     // Adjust buttons
     const leftBtn = this.root.querySelector('.s3-adjust-left');
     const rightBtn = this.root.querySelector('.s3-adjust-right');
-    if (leftBtn) {
-      if (isOff || isRunning) {
-        leftBtn.style.opacity = '0';
-        leftBtn.style.pointerEvents = 'none';
-      } else {
-        leftBtn.style.opacity = this.editMode !== 'none' ? '1' : '0.45';
-        leftBtn.style.pointerEvents = this.editMode !== 'none' ? 'auto' : 'none';
-      }
-    }
-    if (rightBtn) {
-      if (isOff || isRunning) {
-        rightBtn.style.opacity = '0';
-        rightBtn.style.pointerEvents = 'none';
-      } else {
-        rightBtn.style.opacity = this.editMode !== 'none' ? '1' : '0.45';
-        rightBtn.style.pointerEvents = this.editMode !== 'none' ? 'auto' : 'none';
-      }
-    }
+    this.renderAdjustButtons(leftBtn, rightBtn, isOff, isRunning);
 
     // Status icons
     const iconWifi = this.root.querySelector('.s3-icon-wifi');
