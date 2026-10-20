@@ -869,19 +869,42 @@ body.is-embedded .device-wrapper {
 }
 
 /* ---------------- Machine Turned OFF / Deep Standby ---------------- */
-.device-off .device-touch-layer > *:not(.power-persist) {
+.device-off .device-touch-layer > *:not(.power-persist):not(.pill-bar-container) {
   opacity: 0 !important;
   pointer-events: none !important;
   filter: none !important;
   animation: none !important;
 }
 
-.device-off .power-persist {
-  opacity: 0.5 !important;
-  pointer-events: auto !important;
+.device-off .pill-bar-container {
+  pointer-events: none !important;
+  border-color: transparent !important;
 }
 
-.device-off .power-persist img {
+.device-off .pill-outline-svg,
+.device-off .pill-heat,
+.device-off .pill-dry,
+.device-off .pill-baby-center {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.device-off .power-persist,
+.device-off .pill-power-center,
+.device-off .s3-power-btn {
+  opacity: 0.5 !important;
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+.device-off .pill-power-center:hover,
+.device-off .s3-power-btn:hover {
+  opacity: 0.85 !important;
+}
+
+.device-off .power-persist img,
+.device-off .pill-power-center img,
+.device-off .s3-power-btn img {
   opacity: 1 !important;
   filter: none !important;
 }
