@@ -955,7 +955,7 @@ class Scheme1Controller {
         heatEl.style.opacity = this.mode === 'heat' ? '1' : '0';
         heatEl.style.pointerEvents = 'none';
       } else {
-        heatEl.style.opacity = this.mode === 'heat' ? '1' : '0.45';
+        heatEl.style.opacity = this.mode === 'heat' ? '1' : '0.25';
         heatEl.style.pointerEvents = 'auto';
       }
       heatEl.classList.toggle('active', this.mode === 'heat' && !isOff);
@@ -970,7 +970,7 @@ class Scheme1Controller {
         dryEl.style.opacity = this.mode === 'dry' ? '1' : '0';
         dryEl.style.pointerEvents = 'none';
       } else {
-        dryEl.style.opacity = this.mode === 'dry' ? '1' : '0.45';
+        dryEl.style.opacity = this.mode === 'dry' ? '1' : '0.25';
         dryEl.style.pointerEvents = 'auto';
       }
       dryEl.classList.toggle('active', this.mode === 'dry' && !isOff);
@@ -1034,7 +1034,7 @@ class Scheme1Controller {
         }
       } else {
         babyBtn.style.pointerEvents = 'auto';
-        babyBtn.style.opacity = this.babyMode ? '1' : '0.45';
+        babyBtn.style.opacity = this.babyMode ? '1' : '0.25';
       }
       babyBtn.classList.toggle('baby-active', this.babyMode && !isOff);
     }
@@ -1722,7 +1722,7 @@ class Scheme2Controller {
         heatEl.style.opacity = this.mode === 'heat' ? '1' : '0';
         heatEl.style.pointerEvents = 'none';
       } else {
-        heatEl.style.opacity = this.mode === 'heat' ? '1' : '0.45';
+        heatEl.style.opacity = this.mode === 'heat' ? '1' : '0.25';
         heatEl.style.pointerEvents = 'auto';
       }
       heatEl.classList.toggle('active', this.mode === 'heat' && !isOff);
@@ -1736,7 +1736,7 @@ class Scheme2Controller {
         dryEl.style.opacity = this.mode === 'dry' ? '1' : '0';
         dryEl.style.pointerEvents = 'none';
       } else {
-        dryEl.style.opacity = this.mode === 'dry' ? '1' : '0.45';
+        dryEl.style.opacity = this.mode === 'dry' ? '1' : '0.25';
         dryEl.style.pointerEvents = 'auto';
       }
       dryEl.classList.toggle('active', this.mode === 'dry' && !isOff);
@@ -1772,7 +1772,7 @@ class Scheme2Controller {
         }
       } else {
         babyBtn.style.pointerEvents = 'auto';
-        babyBtn.style.opacity = this.babyMode ? '1' : '0.45';
+        babyBtn.style.opacity = this.babyMode ? '1' : '0.25';
       }
       babyBtn.classList.toggle('baby-active', this.babyMode && !isOff);
     }
@@ -2295,7 +2295,7 @@ class Scheme3Controller {
         heatEl.style.opacity = this.mode === 'heat' ? '1' : '0';
         heatEl.style.pointerEvents = 'none';
       } else {
-        heatEl.style.opacity = this.mode === 'heat' ? '1' : '0.45';
+        heatEl.style.opacity = this.mode === 'heat' ? '1' : '0.25';
         heatEl.style.pointerEvents = 'auto';
       }
       heatEl.classList.toggle('active', this.mode === 'heat' && !isOff);
@@ -2309,7 +2309,7 @@ class Scheme3Controller {
         dryEl.style.opacity = this.mode === 'dry' ? '1' : '0';
         dryEl.style.pointerEvents = 'none';
       } else {
-        dryEl.style.opacity = this.mode === 'dry' ? '1' : '0.45';
+        dryEl.style.opacity = this.mode === 'dry' ? '1' : '0.25';
         dryEl.style.pointerEvents = 'auto';
       }
       dryEl.classList.toggle('active', this.mode === 'dry' && !isOff);
@@ -2329,7 +2329,7 @@ class Scheme3Controller {
         }
       } else {
         babyCenter.style.pointerEvents = 'auto';
-        babyCenter.style.opacity = this.babyMode ? '1' : '0.45';
+        babyCenter.style.opacity = this.babyMode ? '1' : '0.25';
       }
       babyCenter.classList.toggle('baby-active', this.babyMode && !isOff);
     }
