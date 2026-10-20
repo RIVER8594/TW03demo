@@ -195,6 +195,9 @@ class Scheme1Controller {
     this.adjustHoldTimer = null;
     this.adjustStepInterval = null;
 
+    this.lastTouchTime = 0;
+    this.lastCompClickTime = 0;
+
     this.bindEvents();
     this.startStandbyCarousel();
     this.resetLowPowerTimer();
@@ -301,7 +304,7 @@ class Scheme1Controller {
     const minusBtn = this.root.querySelector('.btn-adjust-left');
     if (minusBtn) {
       const startM = (e) => this.handleAdjustDown(e, -1);
-      const endM = () => this.handleAdjustUp();
+      const endM = (e) => this.handleAdjustUp(e);
       minusBtn.addEventListener('mousedown', startM);
       minusBtn.addEventListener('touchstart', startM, { passive: true });
       minusBtn.addEventListener('mouseup', endM);
@@ -313,7 +316,7 @@ class Scheme1Controller {
     const plusBtn = this.root.querySelector('.btn-adjust-right');
     if (plusBtn) {
       const startP = (e) => this.handleAdjustDown(e, 1);
-      const endP = () => this.handleAdjustUp();
+      const endP = (e) => this.handleAdjustUp(e);
       plusBtn.addEventListener('mousedown', startP);
       plusBtn.addEventListener('touchstart', startP, { passive: true });
       plusBtn.addEventListener('mouseup', endP);
@@ -370,8 +373,23 @@ class Scheme1Controller {
     this.root.classList.add('low-power');
   }
 
+  isSyntheticMouseEvent(e) {
+    if (!e) return false;
+    if (e.type && e.type.startsWith('touch')) {
+      this.lastTouchTime = Date.now();
+      return false;
+    }
+    if (e.type && e.type.startsWith('mouse')) {
+      if (Date.now() - this.lastTouchTime < 700) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   // ==================== POWER & START / PAUSE LOGIC ====================
   handlePowerDown(e) {
+    if (this.isSyntheticMouseEvent(e)) return;
     if (e) e.stopPropagation();
     if (this.isLowPower) {
       this.wakeUp();
@@ -394,7 +412,13 @@ class Scheme1Controller {
   }
 
   handlePowerUp(e) {
-    if (e) e.stopPropagation();
+    if (this.isSyntheticMouseEvent(e)) return;
+    if (e) {
+      e.stopPropagation();
+      if (e.cancelable && e.type && e.type.startsWith('touch')) {
+        e.preventDefault();
+      }
+    }
     clearTimeout(this.powerPressTimer);
     if (this.powerLongPressed) {
       this.powerPressStart = 0;
@@ -555,6 +579,7 @@ class Scheme1Controller {
 
   // ==================== MODE & UNIT SWITCHING ====================
   handleHeatDown(e) {
+    if (this.isSyntheticMouseEvent(e)) return;
     if (e) e.stopPropagation();
     if (this.interceptLockedOrLowPower()) return;
     this.heatPressStart = Date.now();
@@ -576,7 +601,13 @@ class Scheme1Controller {
   }
 
   handleHeatUp(e) {
-    if (e) e.stopPropagation();
+    if (this.isSyntheticMouseEvent(e)) return;
+    if (e) {
+      e.stopPropagation();
+      if (e.cancelable && e.type && e.type.startsWith('touch')) {
+        e.preventDefault();
+      }
+    }
     clearTimeout(this.heatPressTimer);
     if (this.heatLongPressed) {
       this.heatPressStart = 0;
@@ -617,6 +648,7 @@ class Scheme1Controller {
 
   // ==================== SETTING KEY (COMPOSITE KEY) & RESERVATION ====================
   handleCompDown(e) {
+    if (this.isSyntheticMouseEvent(e)) return;
     if (e) e.stopPropagation();
     if (this.interceptLockedOrLowPower()) return;
     this.compPressStart = Date.now();
@@ -636,7 +668,13 @@ class Scheme1Controller {
   }
 
   handleCompUp(e) {
-    if (e) e.stopPropagation();
+    if (this.isSyntheticMouseEvent(e)) return;
+    if (e) {
+      e.stopPropagation();
+      if (e.cancelable && e.type && e.type.startsWith('touch')) {
+        e.preventDefault();
+      }
+    }
     clearTimeout(this.compPressTimer);
     if (this.compLongPressed) {
       this.compPressStart = 0;
@@ -651,6 +689,10 @@ class Scheme1Controller {
   }
 
   handleCompClick() {
+    const now = Date.now();
+    if (now - this.lastCompClickTime < 350) return;
+    this.lastCompClickTime = now;
+
     sound.playClick();
 
     if (this.power === 'paused') {
@@ -736,7 +778,9 @@ class Scheme1Controller {
 
   // ==================== BABY MODE & CHILD LOCK ====================
   handleBabyDown(e) {
+    if (this.isSyntheticMouseEvent(e)) return;
     if (e) e.stopPropagation();
+    if (this.interceptLockedOrLowPower()) return;
     this.babyPressStart = Date.now();
     this.babyLongPressed = false;
     clearTimeout(this.babyPressTimer);
@@ -754,7 +798,13 @@ class Scheme1Controller {
   }
 
   handleBabyUp(e) {
-    if (e) e.stopPropagation();
+    if (this.isSyntheticMouseEvent(e)) return;
+    if (e) {
+      e.stopPropagation();
+      if (e.cancelable && e.type && e.type.startsWith('touch')) {
+        e.preventDefault();
+      }
+    }
     clearTimeout(this.babyPressTimer);
     if (this.babyLongPressed) {
       this.babyPressStart = 0;
@@ -797,6 +847,7 @@ class Scheme1Controller {
 
   // ==================== PARAMETER ADJUSTMENT (+ / -) ====================
   handleAdjustDown(e, delta) {
+    if (this.isSyntheticMouseEvent(e)) return;
     if (e) e.stopPropagation();
     if (this.interceptLockedOrLowPower()) return;
     this.adjustValue(delta);
@@ -811,7 +862,11 @@ class Scheme1Controller {
     }, 500);
   }
 
-  handleAdjustUp() {
+  handleAdjustUp(e) {
+    if (this.isSyntheticMouseEvent(e)) return;
+    if (e && e.cancelable && e.type && e.type.startsWith('touch')) {
+      e.preventDefault();
+    }
     clearTimeout(this.adjustHoldTimer);
     clearInterval(this.adjustStepInterval);
   }
@@ -1216,6 +1271,7 @@ class Scheme2Controller {
     this.remainingSec = 40 * 60;
     this.countdownTimer = null;
     this.inactivityTimer = null;
+    this.lastTouchTime = 0;
 
     this.bindEvents();
     this.render();
@@ -1245,14 +1301,14 @@ class Scheme2Controller {
     // Power button in pill center
     const powerBtn = this.root.querySelector('.pill-power-center');
     if (powerBtn) {
-      powerBtn.addEventListener('mousedown', () => this.handlePowerPressStart());
-      powerBtn.addEventListener('touchstart', () => this.handlePowerPressStart(), { passive: true });
-      powerBtn.addEventListener('mouseup', () => this.handlePowerPressEnd());
+      powerBtn.addEventListener('mousedown', (e) => this.handlePowerPressStart(e));
+      powerBtn.addEventListener('touchstart', (e) => this.handlePowerPressStart(e), { passive: true });
+      powerBtn.addEventListener('mouseup', (e) => this.handlePowerPressEnd(e));
       powerBtn.addEventListener('mouseleave', () => {
         clearTimeout(this.powerPressTimer);
         this.powerPressStartTime = 0;
       });
-      powerBtn.addEventListener('touchend', () => this.handlePowerPressEnd());
+      powerBtn.addEventListener('touchend', (e) => this.handlePowerPressEnd(e));
     }
 
     // Heat Pill Section
@@ -1310,7 +1366,22 @@ class Scheme2Controller {
     if (unitC) unitC.addEventListener('click', () => this.toggleUnit());
   }
 
-  handlePowerPressStart() {
+  isSyntheticMouseEvent(e) {
+    if (!e) return false;
+    if (e.type && e.type.startsWith('touch')) {
+      this.lastTouchTime = Date.now();
+      return false;
+    }
+    if (e.type && e.type.startsWith('mouse')) {
+      if (Date.now() - this.lastTouchTime < 700) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  handlePowerPressStart(e) {
+    if (this.isSyntheticMouseEvent(e)) return;
     this.powerPressStartTime = Date.now();
     this.powerLongPressed = false;
     this.powerPressTimer = setTimeout(() => {
@@ -1319,7 +1390,11 @@ class Scheme2Controller {
     }, 1200);
   }
 
-  handlePowerPressEnd() {
+  handlePowerPressEnd(e) {
+    if (this.isSyntheticMouseEvent(e)) return;
+    if (e && e.cancelable && e.type && e.type.startsWith('touch')) {
+      e.preventDefault();
+    }
     clearTimeout(this.powerPressTimer);
     if (!this.powerLongPressed && this.powerPressStartTime && Date.now() - this.powerPressStartTime < 1200) {
       this.toggleStartPause();
@@ -1650,6 +1725,7 @@ class Scheme3Controller {
     this.remainingSec = 40 * 60;
     this.countdownTimer = null;
     this.inactivityTimer = null;
+    this.lastTouchTime = 0;
 
     this.bindEvents();
     this.render();
@@ -1679,14 +1755,14 @@ class Scheme3Controller {
     // Standalone Power Button at bottom
     const powerBtn = this.root.querySelector('.s3-power-btn');
     if (powerBtn) {
-      powerBtn.addEventListener('mousedown', () => this.handlePowerPressStart());
-      powerBtn.addEventListener('touchstart', () => this.handlePowerPressStart(), { passive: true });
-      powerBtn.addEventListener('mouseup', () => this.handlePowerPressEnd());
+      powerBtn.addEventListener('mousedown', (e) => this.handlePowerPressStart(e));
+      powerBtn.addEventListener('touchstart', (e) => this.handlePowerPressStart(e), { passive: true });
+      powerBtn.addEventListener('mouseup', (e) => this.handlePowerPressEnd(e));
       powerBtn.addEventListener('mouseleave', () => {
         clearTimeout(this.powerPressTimer);
         this.powerPressStartTime = 0;
       });
-      powerBtn.addEventListener('touchend', () => this.handlePowerPressEnd());
+      powerBtn.addEventListener('touchend', (e) => this.handlePowerPressEnd(e));
     }
 
     // Heat Pill Section
@@ -1738,7 +1814,22 @@ class Scheme3Controller {
     if (unitC) unitC.addEventListener('click', () => this.toggleUnit());
   }
 
-  handlePowerPressStart() {
+  isSyntheticMouseEvent(e) {
+    if (!e) return false;
+    if (e.type && e.type.startsWith('touch')) {
+      this.lastTouchTime = Date.now();
+      return false;
+    }
+    if (e.type && e.type.startsWith('mouse')) {
+      if (Date.now() - this.lastTouchTime < 700) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  handlePowerPressStart(e) {
+    if (this.isSyntheticMouseEvent(e)) return;
     this.powerPressStartTime = Date.now();
     this.powerLongPressed = false;
     this.powerPressTimer = setTimeout(() => {
@@ -1747,7 +1838,11 @@ class Scheme3Controller {
     }, 1200);
   }
 
-  handlePowerPressEnd() {
+  handlePowerPressEnd(e) {
+    if (this.isSyntheticMouseEvent(e)) return;
+    if (e && e.cancelable && e.type && e.type.startsWith('touch')) {
+      e.preventDefault();
+    }
     clearTimeout(this.powerPressTimer);
     if (!this.powerLongPressed && this.powerPressStartTime && Date.now() - this.powerPressStartTime < 1200) {
       this.toggleStartPause();
