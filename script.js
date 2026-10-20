@@ -552,6 +552,9 @@ class Scheme1Controller {
           dot.classList.toggle('active', false);
         }
       });
+    } else if (this.power === 'paused') {
+      flame.classList.add('active');
+      // In pause, flame stays on and dots stay fixed at current state per spec
     } else {
       flame.classList.remove('active');
       dots.forEach(d => d.classList.remove('active'));
@@ -875,6 +878,12 @@ class Scheme1Controller {
     sound.playClick();
     this.resetEditInactivityTimer();
 
+    if (this.power === 'paused') {
+      this.power = 'standby';
+      this.stopRunning();
+      this.editMode = 'time';
+    }
+
     // In reservation mode
     if (this.editMode === 'reservation') {
       const len = RESERVATION_PRESETS.length;
@@ -945,10 +954,13 @@ class Scheme1Controller {
     if (heatEl) {
       if (isOff) {
         heatEl.style.opacity = '0';
+        heatEl.style.pointerEvents = 'none';
       } else if (isRunning) {
-        heatEl.style.opacity = this.mode === 'heat' ? '1' : '0.05';
+        heatEl.style.opacity = this.mode === 'heat' ? '1' : '0';
+        heatEl.style.pointerEvents = 'none';
       } else {
         heatEl.style.opacity = this.mode === 'heat' ? '1' : '0.45';
+        heatEl.style.pointerEvents = 'auto';
       }
       heatEl.classList.toggle('active', this.mode === 'heat' && !isOff);
       heatEl.classList.toggle('baby-mode', this.mode === 'heat' && this.babyMode && !isOff);
@@ -957,10 +969,13 @@ class Scheme1Controller {
     if (dryEl) {
       if (isOff) {
         dryEl.style.opacity = '0';
+        dryEl.style.pointerEvents = 'none';
       } else if (isRunning) {
-        dryEl.style.opacity = this.mode === 'dry' ? '1' : '0.05';
+        dryEl.style.opacity = this.mode === 'dry' ? '1' : '0';
+        dryEl.style.pointerEvents = 'none';
       } else {
         dryEl.style.opacity = this.mode === 'dry' ? '1' : '0.45';
+        dryEl.style.pointerEvents = 'auto';
       }
       dryEl.classList.toggle('active', this.mode === 'dry' && !isOff);
       dryEl.classList.toggle('baby-mode', this.mode === 'dry' && this.babyMode && !isOff);
@@ -984,12 +999,17 @@ class Scheme1Controller {
     const compBtn = this.root.querySelector('.btn-composite-key');
     if (compBtn) {
       const compImg = compBtn.querySelector('img');
-      if (isOff || isRunning) {
+      if (isOff) {
         compBtn.style.opacity = '0.05';
         compBtn.style.pointerEvents = 'none';
         compBtn.style.filter = 'none';
         compBtn.classList.remove('editing-glow');
         if (compImg) compImg.src = 'images/时间:温度icon/状态=全灭.svg';
+      } else if (isRunning) {
+        compBtn.style.opacity = '0';
+        compBtn.style.pointerEvents = 'none';
+        compBtn.style.filter = 'none';
+        compBtn.classList.remove('editing-glow');
       } else {
         compBtn.style.pointerEvents = 'auto';
         const isEditing = (this.editMode === 'temp' || this.editMode === 'time' || this.editMode === 'reservation');
@@ -1009,8 +1029,13 @@ class Scheme1Controller {
         babyBtn.style.opacity = '0.05';
         babyBtn.style.pointerEvents = 'none';
       } else if (isRunning) {
-        babyBtn.style.opacity = this.babyMode ? '1' : '0.05';
-        babyBtn.style.pointerEvents = 'none';
+        if (this.babyMode) {
+          babyBtn.style.opacity = '1';
+          babyBtn.style.pointerEvents = 'none';
+        } else {
+          babyBtn.style.opacity = '0';
+          babyBtn.style.pointerEvents = 'none';
+        }
       } else {
         babyBtn.style.pointerEvents = 'auto';
         babyBtn.style.opacity = this.babyMode ? '1' : '0.45';
@@ -1052,8 +1077,14 @@ class Scheme1Controller {
   renderAdjustButtons(minusBtn, plusBtn, isOff, isRunning) {
     if (!minusBtn || !plusBtn) return;
     if (isOff || isRunning || this.power === 'reserved') {
-      minusBtn.classList.add('disabled');
-      plusBtn.classList.add('disabled');
+      minusBtn.classList.remove('active', 'disabled');
+      plusBtn.classList.remove('active', 'disabled');
+      minusBtn.style.opacity = '0';
+      plusBtn.style.opacity = '0';
+      minusBtn.style.visibility = 'hidden';
+      plusBtn.style.visibility = 'hidden';
+      minusBtn.style.pointerEvents = 'none';
+      plusBtn.style.pointerEvents = 'none';
       return;
     }
 
@@ -1065,6 +1096,8 @@ class Scheme1Controller {
       plusBtn.classList.add('active');
       minusBtn.style.opacity = '';
       plusBtn.style.opacity = '';
+      minusBtn.style.visibility = 'visible';
+      plusBtn.style.visibility = 'visible';
       minusBtn.style.pointerEvents = '';
       plusBtn.style.pointerEvents = '';
       return;
@@ -1076,6 +1109,8 @@ class Scheme1Controller {
       plusBtn.classList.add('active');
       minusBtn.style.opacity = '';
       plusBtn.style.opacity = '';
+      minusBtn.style.visibility = 'visible';
+      plusBtn.style.visibility = 'visible';
       minusBtn.style.pointerEvents = '';
       plusBtn.style.pointerEvents = '';
       if (this.mode === 'dry' || this.babyMode) {
@@ -1095,6 +1130,8 @@ class Scheme1Controller {
       plusBtn.classList.add('active');
       minusBtn.style.opacity = '';
       plusBtn.style.opacity = '';
+      minusBtn.style.visibility = 'visible';
+      plusBtn.style.visibility = 'visible';
       minusBtn.style.pointerEvents = '';
       plusBtn.style.pointerEvents = '';
       if (this.babyMode) {
@@ -1122,6 +1159,8 @@ class Scheme1Controller {
     plusBtn.classList.remove('disabled', 'active');
     minusBtn.style.opacity = '0';
     plusBtn.style.opacity = '0';
+    minusBtn.style.visibility = 'hidden';
+    plusBtn.style.visibility = 'hidden';
     minusBtn.style.pointerEvents = 'none';
     plusBtn.style.pointerEvents = 'none';
   }
@@ -1134,13 +1173,17 @@ class Scheme1Controller {
 
     if (!timeTab || !tempTab) return;
 
-    if (isOff) {
+    if (isOff || isRunning) {
       timeTab.classList.remove('active');
       tempTab.classList.remove('active');
       if (timeLine) timeLine.classList.remove('active');
       if (tempLine) tempLine.classList.remove('active');
+      if (timeTab.parentElement) timeTab.parentElement.style.opacity = isRunning ? '0' : '';
+      if (tempTab.parentElement) tempTab.parentElement.style.opacity = isRunning ? '0' : '';
       return;
     }
+    if (timeTab.parentElement) timeTab.parentElement.style.opacity = '';
+    if (tempTab.parentElement) tempTab.parentElement.style.opacity = '';
 
     let isShowingTime = false;
     if (isRunning || this.power === 'paused') {
@@ -1194,9 +1237,11 @@ class Scheme1Controller {
       return;
     }
 
-    // Blinking styles
-    const shouldBlink = (this.editMode !== 'none') || (this.power === 'paused');
-    digitContainer.classList.toggle('blinking', shouldBlink);
+    // Blinking styles: In pause state, digits blink at 1s on / 1s off in sync with power center
+    const isPaused = this.power === 'paused';
+    const isEditing = this.editMode !== 'none';
+    digitContainer.classList.toggle('blinking', isEditing && !isPaused);
+    digitContainer.classList.toggle('pause-blink', isPaused);
 
     let d1 = ' ', d2 = ' ', d3 = ' ', d4 = ' ';
     let showColon = false;
@@ -1422,10 +1467,12 @@ class Scheme2Controller {
       return;
     }
     sound.playClick();
-    if (this.power === 'standby' || this.power === 'paused') {
+    if (this.power === 'standby') {
       this.startRunning();
     } else if (this.power === 'running') {
       this.pauseRunning();
+    } else if (this.power === 'paused') {
+      this.resumeRunning();
     }
     this.render();
   }
@@ -1434,6 +1481,12 @@ class Scheme2Controller {
     this.power = 'running';
     this.editMode = 'none';
     this.remainingSec = timeStrToMinutes(this.currentTimeStr) * 60;
+    this.startCountdown();
+    this.render();
+  }
+
+  resumeRunning() {
+    this.power = 'running';
     this.startCountdown();
     this.render();
   }
@@ -1469,6 +1522,14 @@ class Scheme2Controller {
     sound.playClick();
     this.resetInactivityTimer();
 
+    if (this.power === 'paused') {
+      this.power = 'standby';
+      this.stopRunning();
+      this.editMode = 'time';
+      this.render();
+      return;
+    }
+
     // User confirmed Q1:
     // In default state: both left and right are [+]
     // Once in edit mode: left changes to [-], right stays [+]
@@ -1488,6 +1549,10 @@ class Scheme2Controller {
     if (this.power === 'off') return;
     if (type === 'temp' && (this.babyMode || this.mode === 'dry')) return;
     sound.playClick();
+    if (this.power === 'paused') {
+      this.power = 'standby';
+      this.stopRunning();
+    }
     this.editMode = type;
     this.resetInactivityTimer();
     this.render();
@@ -1495,8 +1560,12 @@ class Scheme2Controller {
 
   setMode(mode) {
     if (this.power === 'off') return;
-    if (this.mode === mode) return;
+    if (this.mode === mode && this.power !== 'paused') return;
     sound.playMode();
+    if (this.power === 'paused') {
+      this.power = 'standby';
+      this.stopRunning();
+    }
     this.mode = mode;
     this.editMode = 'none';
     this.babyMode = false;
@@ -1507,6 +1576,10 @@ class Scheme2Controller {
   toggleBabyMode() {
     if (this.power === 'off') return;
     sound.playClick();
+    if (this.power === 'paused') {
+      this.power = 'standby';
+      this.stopRunning();
+    }
     this.babyMode = !this.babyMode;
     if (this.babyMode) {
       this.savedPreBabyTempIndex = this.tempIndex;
@@ -1527,6 +1600,11 @@ class Scheme2Controller {
 
   handleLeftAdjust() {
     if (this.power === 'off') return;
+    if (this.power === 'paused') {
+      this.power = 'standby';
+      this.stopRunning();
+      this.editMode = 'time';
+    }
     if (this.editMode === 'none') {
       this.editMode = 'time';
     }
@@ -1537,6 +1615,12 @@ class Scheme2Controller {
     if (this.power === 'off') return;
     sound.playClick();
     this.resetInactivityTimer();
+
+    if (this.power === 'paused') {
+      this.power = 'standby';
+      this.stopRunning();
+      this.editMode = 'time';
+    }
 
     if (this.editMode === 'none') {
       this.editMode = 'time';
@@ -1584,44 +1668,113 @@ class Scheme2Controller {
     const dryEl = this.root.querySelector('.pill-dry');
     const powerCenter = this.root.querySelector('.pill-power-center');
     if (heatEl) {
+      if (isOff) {
+        heatEl.style.opacity = '0';
+        heatEl.style.pointerEvents = 'none';
+      } else if (isRunning) {
+        heatEl.style.opacity = this.mode === 'heat' ? '1' : '0';
+        heatEl.style.pointerEvents = 'none';
+      } else {
+        heatEl.style.opacity = this.mode === 'heat' ? '1' : '0.45';
+        heatEl.style.pointerEvents = 'auto';
+      }
       heatEl.classList.toggle('active', this.mode === 'heat' && !isOff);
       heatEl.classList.toggle('baby-mode', this.mode === 'heat' && this.babyMode && !isOff);
     }
     if (dryEl) {
+      if (isOff) {
+        dryEl.style.opacity = '0';
+        dryEl.style.pointerEvents = 'none';
+      } else if (isRunning) {
+        dryEl.style.opacity = this.mode === 'dry' ? '1' : '0';
+        dryEl.style.pointerEvents = 'none';
+      } else {
+        dryEl.style.opacity = this.mode === 'dry' ? '1' : '0.45';
+        dryEl.style.pointerEvents = 'auto';
+      }
       dryEl.classList.toggle('active', this.mode === 'dry' && !isOff);
       dryEl.classList.toggle('baby-mode', this.mode === 'dry' && this.babyMode && !isOff);
     }
-    if (powerCenter) powerCenter.classList.toggle('active', isRunning || this.power === 'standby');
+    if (powerCenter) {
+      if (isOff) {
+        powerCenter.style.opacity = '0.5';
+        powerCenter.classList.remove('active', 'pause-blink');
+      } else if (isPaused) {
+        powerCenter.style.opacity = '1';
+        powerCenter.classList.add('pause-blink');
+      } else {
+        powerCenter.style.opacity = '1';
+        powerCenter.classList.remove('pause-blink');
+        powerCenter.classList.add('active');
+      }
+    }
 
     // Baby Mode Button
     const babyBtn = this.root.querySelector('.btn-baby-key');
     if (babyBtn) {
-      babyBtn.classList.toggle('baby-active', this.babyMode && !isOff);
       if (isOff) {
         babyBtn.style.opacity = '0.05';
+        babyBtn.style.pointerEvents = 'none';
+      } else if (isRunning) {
+        if (this.babyMode) {
+          babyBtn.style.opacity = '1';
+          babyBtn.style.pointerEvents = 'none';
+        } else {
+          babyBtn.style.opacity = '0';
+          babyBtn.style.pointerEvents = 'none';
+        }
       } else {
+        babyBtn.style.pointerEvents = 'auto';
         babyBtn.style.opacity = this.babyMode ? '1' : '0.45';
+      }
+      babyBtn.classList.toggle('baby-active', this.babyMode && !isOff);
+    }
+
+    // Left Button [-] and Right Button [+]
+    const leftBtn = this.root.querySelector('.btn-adjust-left');
+    const rightBtn = this.root.querySelector('.btn-adjust-right');
+    if (leftBtn) {
+      if (isOff || isRunning) {
+        leftBtn.style.opacity = '0';
+        leftBtn.style.pointerEvents = 'none';
+      } else {
+        leftBtn.style.opacity = this.editMode !== 'none' ? '1' : '0.45';
+        leftBtn.style.pointerEvents = this.editMode !== 'none' ? 'auto' : 'none';
+      }
+    }
+    if (rightBtn) {
+      if (isOff || isRunning) {
+        rightBtn.style.opacity = '0';
+        rightBtn.style.pointerEvents = 'none';
+      } else {
+        rightBtn.style.opacity = this.editMode !== 'none' ? '1' : '0.45';
+        rightBtn.style.pointerEvents = this.editMode !== 'none' ? 'auto' : 'none';
       }
     }
 
-    // Left Button: [-] per Figma specification
-    const leftBtnImg = this.root.querySelector('.btn-adjust-left img');
-    if (leftBtnImg) {
-      leftBtnImg.src = 'images/减号.svg';
-      leftBtnImg.alt = '-';
-    }
-
     // Bottom Composite Key icon states from images/时间:温度icon/
-    const compImg = this.root.querySelector('.btn-composite-key img');
-    if (compImg) {
+    const compBtn = this.root.querySelector('.btn-composite-key');
+    if (compBtn) {
+      const compImg = compBtn.querySelector('img');
       if (isOff) {
-        compImg.src = 'images/时间:温度icon/状态=全灭.svg';
-      } else if (this.editMode === 'time') {
-        compImg.src = 'images/时间:温度icon/状态=仅时间可调.svg';
-      } else if (this.editMode === 'temp') {
-        compImg.src = 'images/时间:温度icon/状态=全亮.svg';
+        compBtn.style.opacity = '0.05';
+        compBtn.style.pointerEvents = 'none';
+        if (compImg) compImg.src = 'images/时间:温度icon/状态=全灭.svg';
+      } else if (isRunning) {
+        compBtn.style.opacity = '0';
+        compBtn.style.pointerEvents = 'none';
       } else {
-        compImg.src = 'images/时间:温度icon/状态=半亮.svg';
+        compBtn.style.pointerEvents = 'auto';
+        compBtn.style.opacity = this.editMode !== 'none' ? '1' : '0.45';
+        if (compImg) {
+          if (this.editMode === 'time') {
+            compImg.src = 'images/时间:温度icon/状态=仅时间可调.svg';
+          } else if (this.editMode === 'temp') {
+            compImg.src = 'images/时间:温度icon/状态=全亮.svg';
+          } else {
+            compImg.src = 'images/时间:温度icon/状态=半亮.svg';
+          }
+        }
       }
     }
 
@@ -1653,9 +1806,11 @@ class Scheme2Controller {
   renderTimeDigits() {
     const timeContainer = this.root.querySelector('.s23-time-digits');
     if (!timeContainer) return;
-    timeContainer.classList.toggle('blinking', this.editMode === 'time');
+    const isPaused = this.power === 'paused';
+    timeContainer.classList.toggle('blinking', this.editMode === 'time' && !isPaused);
+    timeContainer.classList.toggle('pause-blink', isPaused);
 
-    const str = this.power === 'running' 
+    const str = (this.power === 'running' || this.power === 'paused')
       ? formatCountdown(this.remainingSec) 
       : this.currentTimeStr;
     const [h, m] = str.split(':');
@@ -1870,10 +2025,12 @@ class Scheme3Controller {
       return;
     }
     sound.playClick();
-    if (this.power === 'standby' || this.power === 'paused') {
+    if (this.power === 'standby') {
       this.startRunning();
     } else if (this.power === 'running') {
       this.pauseRunning();
+    } else if (this.power === 'paused') {
+      this.resumeRunning();
     }
     this.render();
   }
@@ -1882,6 +2039,12 @@ class Scheme3Controller {
     this.power = 'running';
     this.editMode = 'none';
     this.remainingSec = timeStrToMinutes(this.currentTimeStr) * 60;
+    this.startCountdown();
+    this.render();
+  }
+
+  resumeRunning() {
+    this.power = 'running';
     this.startCountdown();
     this.render();
   }
@@ -1915,6 +2078,10 @@ class Scheme3Controller {
   toggleTimeEdit() {
     if (this.power === 'off') return;
     sound.playClick();
+    if (this.power === 'paused') {
+      this.power = 'standby';
+      this.stopRunning();
+    }
     this.editMode = this.editMode === 'time' ? 'none' : 'time';
     this.resetInactivityTimer();
     this.render();
@@ -1923,6 +2090,10 @@ class Scheme3Controller {
   toggleTempEdit() {
     if (this.power === 'off' || this.babyMode || this.mode === 'dry') return;
     sound.playClick();
+    if (this.power === 'paused') {
+      this.power = 'standby';
+      this.stopRunning();
+    }
     this.editMode = this.editMode === 'temp' ? 'none' : 'temp';
     this.resetInactivityTimer();
     this.render();
@@ -1930,8 +2101,12 @@ class Scheme3Controller {
 
   setMode(mode) {
     if (this.power === 'off') return;
-    if (this.mode === mode) return;
+    if (this.mode === mode && this.power !== 'paused') return;
     sound.playMode();
+    if (this.power === 'paused') {
+      this.power = 'standby';
+      this.stopRunning();
+    }
     this.mode = mode;
     this.editMode = 'none';
     this.babyMode = false;
@@ -1942,6 +2117,10 @@ class Scheme3Controller {
   toggleBabyMode() {
     if (this.power === 'off') return;
     sound.playClick();
+    if (this.power === 'paused') {
+      this.power = 'standby';
+      this.stopRunning();
+    }
     this.babyMode = !this.babyMode;
     if (this.babyMode) {
       this.savedPreBabyTempIndex = this.tempIndex;
@@ -1964,6 +2143,12 @@ class Scheme3Controller {
     if (this.power === 'off') return;
     sound.playClick();
     this.resetInactivityTimer();
+
+    if (this.power === 'paused') {
+      this.power = 'standby';
+      this.stopRunning();
+      this.editMode = 'time';
+    }
 
     if (this.editMode === 'none') {
       this.editMode = 'time';
@@ -2011,31 +2196,119 @@ class Scheme3Controller {
     const dryEl = this.root.querySelector('.pill-dry');
     const babyCenter = this.root.querySelector('.pill-baby-center');
     if (heatEl) {
+      if (isOff) {
+        heatEl.style.opacity = '0';
+        heatEl.style.pointerEvents = 'none';
+      } else if (isRunning) {
+        heatEl.style.opacity = this.mode === 'heat' ? '1' : '0';
+        heatEl.style.pointerEvents = 'none';
+      } else {
+        heatEl.style.opacity = this.mode === 'heat' ? '1' : '0.45';
+        heatEl.style.pointerEvents = 'auto';
+      }
       heatEl.classList.toggle('active', this.mode === 'heat' && !isOff);
       heatEl.classList.toggle('baby-mode', this.mode === 'heat' && this.babyMode && !isOff);
     }
     if (dryEl) {
+      if (isOff) {
+        dryEl.style.opacity = '0';
+        dryEl.style.pointerEvents = 'none';
+      } else if (isRunning) {
+        dryEl.style.opacity = this.mode === 'dry' ? '1' : '0';
+        dryEl.style.pointerEvents = 'none';
+      } else {
+        dryEl.style.opacity = this.mode === 'dry' ? '1' : '0.45';
+        dryEl.style.pointerEvents = 'auto';
+      }
       dryEl.classList.toggle('active', this.mode === 'dry' && !isOff);
       dryEl.classList.toggle('baby-mode', this.mode === 'dry' && this.babyMode && !isOff);
     }
     if (babyCenter) {
-      babyCenter.classList.toggle('baby-active', this.babyMode && !isOff);
       if (isOff) {
         babyCenter.style.opacity = '0.05';
+        babyCenter.style.pointerEvents = 'none';
+      } else if (isRunning) {
+        if (this.babyMode) {
+          babyCenter.style.opacity = '1';
+          babyCenter.style.pointerEvents = 'none';
+        } else {
+          babyCenter.style.opacity = '0';
+          babyCenter.style.pointerEvents = 'none';
+        }
       } else {
+        babyCenter.style.pointerEvents = 'auto';
         babyCenter.style.opacity = this.babyMode ? '1' : '0.45';
       }
+      babyCenter.classList.toggle('baby-active', this.babyMode && !isOff);
     }
 
     // Independent buttons
     const timeBtn = this.root.querySelector('.s3-time-btn');
     const tempBtn = this.root.querySelector('.s3-temp-btn');
-    if (timeBtn) timeBtn.classList.toggle('active', this.editMode === 'time');
-    if (tempBtn) tempBtn.classList.toggle('active', this.editMode === 'temp');
+    if (timeBtn) {
+      if (isOff) {
+        timeBtn.style.opacity = '0.05';
+        timeBtn.style.pointerEvents = 'none';
+      } else if (isRunning) {
+        timeBtn.style.opacity = '0';
+        timeBtn.style.pointerEvents = 'none';
+      } else {
+        timeBtn.style.opacity = this.editMode === 'time' ? '1' : '0.45';
+        timeBtn.style.pointerEvents = 'auto';
+      }
+      timeBtn.classList.toggle('active', this.editMode === 'time');
+    }
+    if (tempBtn) {
+      if (isOff) {
+        tempBtn.style.opacity = '0.05';
+        tempBtn.style.pointerEvents = 'none';
+      } else if (isRunning) {
+        tempBtn.style.opacity = '0';
+        tempBtn.style.pointerEvents = 'none';
+      } else {
+        tempBtn.style.opacity = this.editMode === 'temp' ? '1' : '0.45';
+        tempBtn.style.pointerEvents = 'auto';
+      }
+      tempBtn.classList.toggle('active', this.editMode === 'temp');
+    }
 
     // Standalone power button
     const powerBtn = this.root.querySelector('.s3-power-btn');
-    if (powerBtn) powerBtn.classList.toggle('active', isRunning || this.power === 'standby');
+    if (powerBtn) {
+      if (isOff) {
+        powerBtn.style.opacity = '0.5';
+        powerBtn.classList.remove('active', 'pause-blink');
+      } else if (isPaused) {
+        powerBtn.style.opacity = '1';
+        powerBtn.classList.add('pause-blink');
+      } else {
+        powerBtn.style.opacity = '1';
+        powerBtn.classList.remove('pause-blink');
+        powerBtn.classList.add('active');
+      }
+    }
+
+    // Adjust buttons
+    const leftBtn = this.root.querySelector('.s3-adjust-left');
+    const rightBtn = this.root.querySelector('.s3-adjust-right');
+    if (leftBtn) {
+      if (isOff || isRunning) {
+        leftBtn.style.opacity = '0';
+        leftBtn.style.pointerEvents = 'none';
+      } else {
+        leftBtn.style.opacity = this.editMode !== 'none' ? '1' : '0.45';
+        leftBtn.style.pointerEvents = this.editMode !== 'none' ? 'auto' : 'none';
+      }
+    }
+    if (rightBtn) {
+      if (isOff || isRunning) {
+        rightBtn.style.opacity = '0';
+        rightBtn.style.pointerEvents = 'none';
+      } else {
+        rightBtn.style.opacity = this.editMode !== 'none' ? '1' : '0.45';
+        rightBtn.style.pointerEvents = this.editMode !== 'none' ? 'auto' : 'none';
+      }
+    }
 
     // Status icons
     const iconWifi = this.root.querySelector('.s3-icon-wifi');
@@ -2065,9 +2338,11 @@ class Scheme3Controller {
   renderTimeDigits() {
     const timeContainer = this.root.querySelector('.s23-time-digits');
     if (!timeContainer) return;
-    timeContainer.classList.toggle('blinking', this.editMode === 'time');
+    const isPaused = this.power === 'paused';
+    timeContainer.classList.toggle('blinking', this.editMode === 'time' && !isPaused);
+    timeContainer.classList.toggle('pause-blink', isPaused);
 
-    const str = this.power === 'running' 
+    const str = (this.power === 'running' || this.power === 'paused')
       ? formatCountdown(this.remainingSec) 
       : this.currentTimeStr;
     const [h, m] = str.split(':');
