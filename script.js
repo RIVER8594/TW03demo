@@ -1091,7 +1091,12 @@ class Scheme1Controller {
         babyBtn.style.pointerEvents = 'auto';
         babyBtn.style.opacity = this.babyMode ? '1' : '0.25';
       }
-      babyBtn.classList.toggle('baby-active', this.babyMode && !isOff);
+      const isBabyActive = this.babyMode && !isOff;
+      babyBtn.classList.toggle('baby-active', isBabyActive);
+      const babyImg = babyBtn.querySelector('img');
+      if (babyImg) {
+        babyImg.src = isBabyActive ? 'images/宝宝模式_绿.svg' : 'images/宝宝模式.svg';
+      }
     }
 
     // 4. Adjust Buttons (+ / -)
@@ -1829,7 +1834,12 @@ class Scheme2Controller {
         babyBtn.style.pointerEvents = 'auto';
         babyBtn.style.opacity = this.babyMode ? '1' : '0.25';
       }
-      babyBtn.classList.toggle('baby-active', this.babyMode && !isOff);
+      const isBabyActive = this.babyMode && !isOff;
+      babyBtn.classList.toggle('baby-active', isBabyActive);
+      const babyImg = babyBtn.querySelector('img');
+      if (babyImg) {
+        babyImg.src = isBabyActive ? 'images/宝宝模式_绿.svg' : 'images/宝宝模式.svg';
+      }
     }
 
     // Left Button [-] and Right Button [+]
@@ -2380,7 +2390,12 @@ class Scheme3Controller {
         babyCenter.style.pointerEvents = 'auto';
         babyCenter.style.opacity = this.babyMode ? '1' : '0.25';
       }
-      babyCenter.classList.toggle('baby-active', this.babyMode && !isOff);
+      const isBabyActive = this.babyMode && !isOff;
+      babyCenter.classList.toggle('baby-active', isBabyActive);
+      const babyImg = babyCenter.querySelector('img');
+      if (babyImg) {
+        babyImg.src = isBabyActive ? 'images/宝宝模式_绿.svg' : 'images/宝宝模式.svg';
+      }
     }
 
     // Independent buttons

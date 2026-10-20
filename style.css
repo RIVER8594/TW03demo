@@ -768,8 +768,11 @@ body.is-embedded .device-wrapper {
 }
 
 .pill-section.active.baby-mode {
-  color: #00cf4d !important;
-  text-shadow: 0 0 10px rgba(0, 207, 77, 0.85), 0 0 18px rgba(0, 207, 77, 0.5) !important;
+  color: #1eff68 !important;
+  text-shadow:
+    0 0 2px rgba(255, 255, 255, 0.95),
+    0 0 6px rgba(30, 255, 104, 0.85),
+    0 0 14px rgba(30, 255, 104, 0.4) !important;
 }
 
 .pill-power-center {
@@ -862,26 +865,39 @@ body.is-embedded .device-wrapper {
 
 /* Green Active Baby Mode styling requested by user */
 .btn-baby-key.baby-active {
-  color: #00cf4d !important;
+  color: #1eff68 !important;
   opacity: 1 !important;
-  filter: drop-shadow(0 0 8px rgba(0, 207, 77, 0.85)) drop-shadow(0 0 16px rgba(0, 207, 77, 0.5)) !important;
+  filter:
+    drop-shadow(0 0 2px rgba(255, 255, 255, 0.95))
+    drop-shadow(0 0 6px rgba(30, 255, 104, 0.85))
+    drop-shadow(0 0 14px rgba(30, 255, 104, 0.4)) !important;
   transform: translate(-50%, -50%) !important;
 }
 
 .baby-active img {
-  filter: brightness(0) saturate(100%) invert(67%) sepia(85%) saturate(3015%) hue-rotate(97deg) brightness(98%) contrast(105%) !important;
+  opacity: 1 !important;
+}
+
+.baby-active img[src$="宝宝模式.svg"] {
+  filter: brightness(0) saturate(100%) invert(80%) sepia(50%) saturate(3000%) hue-rotate(85deg) brightness(115%) contrast(105%) !important;
 }
 
 .pill-baby-center.baby-active {
-  color: #00cf4d !important;
+  color: #1eff68 !important;
   opacity: 1 !important;
-  filter: drop-shadow(0 0 8px rgba(0, 207, 77, 0.85)) drop-shadow(0 0 16px rgba(0, 207, 77, 0.5)) !important;
+  filter:
+    drop-shadow(0 0 2px rgba(255, 255, 255, 0.95))
+    drop-shadow(0 0 6px rgba(30, 255, 104, 0.85))
+    drop-shadow(0 0 14px rgba(30, 255, 104, 0.4)) !important;
 }
 
 .pill-baby-center.baby-active img {
   opacity: 1 !important;
-  filter: brightness(0) saturate(100%) invert(67%) sepia(85%) saturate(3015%) hue-rotate(97deg) brightness(98%) contrast(105%) !important;
   transform: scale(1.05);
+}
+
+.pill-baby-center.baby-active img[src$="宝宝模式.svg"] {
+  filter: brightness(0) saturate(100%) invert(80%) sepia(50%) saturate(3000%) hue-rotate(85deg) brightness(115%) contrast(105%) !important;
 }
 
 /* Scheme 3 Independent Time & Temp Keys */
