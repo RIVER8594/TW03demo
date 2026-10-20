@@ -770,9 +770,9 @@ body.is-embedded .device-wrapper {
 .pill-section.active.baby-mode {
   color: #1eff68 !important;
   text-shadow:
-    0 0 2px rgba(255, 255, 255, 0.95),
-    0 0 6px rgba(30, 255, 104, 0.85),
-    0 0 14px rgba(30, 255, 104, 0.4) !important;
+    0 0 1px rgba(255, 255, 255, 0.6),
+    0 0 4px rgba(30, 255, 104, 0.45),
+    0 0 8px rgba(30, 255, 104, 0.2) !important;
 }
 
 .pill-power-center {
@@ -868,9 +868,9 @@ body.is-embedded .device-wrapper {
   color: #1eff68 !important;
   opacity: 1 !important;
   filter:
-    drop-shadow(0 0 2px rgba(255, 255, 255, 0.95))
-    drop-shadow(0 0 6px rgba(30, 255, 104, 0.85))
-    drop-shadow(0 0 14px rgba(30, 255, 104, 0.4)) !important;
+    drop-shadow(0 0 1px rgba(255, 255, 255, 0.6))
+    drop-shadow(0 0 4px rgba(30, 255, 104, 0.45))
+    drop-shadow(0 0 8px rgba(30, 255, 104, 0.2)) !important;
   transform: translate(-50%, -50%) !important;
 }
 
@@ -886,9 +886,9 @@ body.is-embedded .device-wrapper {
   color: #1eff68 !important;
   opacity: 1 !important;
   filter:
-    drop-shadow(0 0 2px rgba(255, 255, 255, 0.95))
-    drop-shadow(0 0 6px rgba(30, 255, 104, 0.85))
-    drop-shadow(0 0 14px rgba(30, 255, 104, 0.4)) !important;
+    drop-shadow(0 0 1px rgba(255, 255, 255, 0.6))
+    drop-shadow(0 0 4px rgba(30, 255, 104, 0.45))
+    drop-shadow(0 0 8px rgba(30, 255, 104, 0.2)) !important;
 }
 
 .pill-baby-center.baby-active img {
