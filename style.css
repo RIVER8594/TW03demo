@@ -790,7 +790,8 @@ body.is-embedded .device-wrapper {
 }
 
 .btn-baby-key:hover {
-  opacity: 0.8;
+  opacity: 1;
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.8));
 }
 
 /* Green Active Baby Mode styling requested by user */
