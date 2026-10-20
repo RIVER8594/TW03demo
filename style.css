@@ -350,6 +350,7 @@ body.is-embedded .device-wrapper {
   height: 100%;
   aspect-ratio: 117 / 217;
   object-fit: contain;
+  flex-shrink: 0;
   transition: opacity 0.2s ease, filter 0.2s ease;
 }
 
@@ -357,6 +358,7 @@ body.is-embedded .device-wrapper {
   height: 100%;
   aspect-ratio: 110 / 204;
   object-fit: contain;
+  flex-shrink: 0;
   transition: opacity 0.2s ease, filter 0.2s ease;
 }
 
@@ -364,6 +366,7 @@ body.is-embedded .device-wrapper {
   height: 52%;
   aspect-ratio: 17 / 114;
   object-fit: contain;
+  flex-shrink: 0;
   margin: 0 1px;
 }
 

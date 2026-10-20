@@ -1187,7 +1187,7 @@ class Scheme1Controller {
     digitContainer.innerHTML = `
       <img class="seg-digit" src="${getDigitSvg(d1)}" alt="${d1}">
       <img class="seg-digit" src="${getDigitSvg(d2)}" alt="${d2}">
-      ${showColon ? `<img class="seg-colon" src="images/colon.svg" alt=":">` : ''}
+      <img class="seg-colon" src="images/colon.svg" alt=":" style="visibility: ${showColon ? 'visible' : 'hidden'};">
       <img class="seg-digit" src="${getDigitSvg(d3)}" alt="${d3}">
       <img class="seg-digit" src="${getDigitSvg(d4)}" alt="${d4}">
     `;
