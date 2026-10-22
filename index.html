@@ -960,7 +960,10 @@
 
       function getCloudApiUrl() {
         try {
-          return localStorage.getItem(API_STORAGE_KEY) || DEFAULT_CLOUD_API;
+          const saved = localStorage.getItem(API_STORAGE_KEY);
+          if (saved && saved.includes('.bspapp.com') && saved.includes('/tw03-vote')) {
+            return saved;
+          }
         } catch (_) {}
         return DEFAULT_CLOUD_API;
       }
@@ -1369,10 +1372,12 @@
 
       if (btnResetCloudConfig) {
         btnResetCloudConfig.addEventListener('click', () => {
-          setCloudApiUrl(DEFAULT_CLOUD_API);
+          localStorage.removeItem(API_STORAGE_KEY);
           cloudApiUrlInput.value = DEFAULT_CLOUD_API;
-          showModalStatus('已恢复内置默认阿里云空间接口。', false);
-          fetchCloudVotes(true);
+          showModalStatus('✅ 已恢复默认阿里云接口，正在重新拉取数据...', false);
+          fetchCloudVotes(true).then(() => {
+            setTimeout(closeCloudModal, 600);
+          });
         });
       }
 
@@ -1386,8 +1391,13 @@
 
           if (!apiUrl.startsWith('http://') && !apiUrl.startsWith('https://')) {
             apiUrl = 'https://' + apiUrl;
-            cloudApiUrlInput.value = apiUrl;
           }
+
+          // Auto complete if missing path
+          if (!apiUrl.includes('/tw03-vote')) {
+            apiUrl = apiUrl.replace(/\/+$/, '') + '/tw03-vote';
+          }
+          cloudApiUrlInput.value = apiUrl;
 
           btnSaveCloudConfig.disabled = true;
           btnSaveCloudConfig.textContent = '测试连接中...';
