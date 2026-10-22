@@ -854,8 +854,10 @@ class Scheme1Controller {
     if (!flame) return;
 
     if (this.power === 'running') {
+      flame.classList.remove('paused');
       flame.classList.add('active');
       dots.forEach((dot, idx) => {
+        dot.classList.remove('paused');
         let pairDist = 0;
         if (idx <= 3) pairDist = 3 - idx;
         else pairDist = idx - 4;
@@ -868,11 +870,16 @@ class Scheme1Controller {
         }
       });
     } else if (this.power === 'paused') {
-      flame.classList.add('active');
-      // In pause, flame stays on and dots stay fixed at current state per spec
-    } else {
+      // 暂停中状态，小火焰灯带是白色半亮
       flame.classList.remove('active');
-      dots.forEach(d => d.classList.remove('active'));
+      flame.classList.add('paused');
+      dots.forEach(d => {
+        d.classList.remove('active');
+        d.classList.add('paused');
+      });
+    } else {
+      flame.classList.remove('active', 'paused');
+      dots.forEach(d => d.classList.remove('active', 'paused'));
     }
   }
 

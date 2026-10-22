@@ -501,6 +501,13 @@ body.is-embedded .device-wrapper {
   box-shadow: 0 0 5px rgba(254, 203, 9, 0.8), 0 0 8px rgba(254, 203, 9, 0.4);
 }
 
+.indicator-dot.paused,
+.paused .indicator-dot {
+  opacity: 0.45 !important;
+  background: #ffffff !important;
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.35) !important;
+}
+
 .indicator-flame {
   width: clamp(8px, 0.72vw, 15px);
   height: clamp(10px, 0.90vw, 19px);
@@ -514,6 +521,13 @@ body.is-embedded .device-wrapper {
   opacity: 1;
   color: #fecb09;
   filter: drop-shadow(0 0 5px rgba(254, 203, 9, 0.85)) drop-shadow(0 0 10px rgba(254, 203, 9, 0.4));
+}
+
+.indicator-flame.paused,
+.paused .indicator-flame {
+  opacity: 0.45 !important;
+  color: #ffffff !important;
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.4)) !important;
 }
 
 /* ---------------- Scheme 2 & 3 Yellow Divider Line & Sweeping Animation ---------------- */
