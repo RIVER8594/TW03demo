@@ -224,7 +224,7 @@ class Scheme1Controller {
     this.dryTimeIndex = 0; // Dry Time: '01:00'
     this.babyHeatTimeIndex = 4; // Baby Heat Time: '00:50'
     this.babyDryTimeIndex = 1; // Baby Dry Time: '01:00'
-    this.reserveIndex = 1; // Reservation: '01:00'
+    this.reserveIndex = 3; // Reservation: '02:00'
 
     // Timers & Intervals
     this.remainingSec = 0;
@@ -325,6 +325,7 @@ class Scheme1Controller {
       dryBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         if (this.interceptLockedOrLowPower()) return;
+        if (this.editMode === 'reservation' || this.power === 'reserved') return;
         this.selectMode('dry');
       });
     }
@@ -514,6 +515,16 @@ class Scheme1Controller {
 
   handleStartPauseClick() {
     sound.playClick();
+    if (this.editMode === 'reservation') {
+      // Confirm Reservation on Power button click
+      this.confirmReservation();
+      return;
+    }
+    if (this.power === 'reserved') {
+      // Start immediately from reservation countdown
+      this.startRunning();
+      return;
+    }
     if (this.power === 'standby') {
       // Start Running
       this.startRunning();
@@ -523,9 +534,6 @@ class Scheme1Controller {
     } else if (this.power === 'paused') {
       // Resume Running
       this.resumeRunning();
-    } else if (this.power === 'standby' && this.editMode === 'reservation') {
-      // Confirm Reservation
-      this.confirmReservation();
     }
     this.render();
   }
@@ -640,6 +648,7 @@ class Scheme1Controller {
     if (this.isSyntheticMouseEvent(e)) return;
     if (e) e.stopPropagation();
     if (this.interceptLockedOrLowPower()) return;
+    if (this.editMode === 'reservation' || this.power === 'reserved') return;
     this.heatPressStart = Date.now();
     this.heatLongPressed = false;
     clearTimeout(this.heatPressTimer);
@@ -673,6 +682,7 @@ class Scheme1Controller {
     }
     if (this.heatPressStart && Date.now() - this.heatPressStart < 2000) {
       this.heatPressStart = 0;
+      if (this.editMode === 'reservation' || this.power === 'reserved') return;
       this.selectMode('heat');
     }
     this.heatPressStart = 0;
@@ -680,6 +690,7 @@ class Scheme1Controller {
 
   selectMode(newMode) {
     if (this.power === 'off') return;
+    if (this.editMode === 'reservation' || this.power === 'reserved') return;
     sound.playMode();
 
     if (this.power === 'paused') {
@@ -751,6 +762,9 @@ class Scheme1Controller {
     if (now - this.lastCompClickTime < 350) return;
     this.lastCompClickTime = now;
 
+    // In reservation setting or reserved countdown, short click does nothing!
+    if (this.editMode === 'reservation' || this.power === 'reserved') return;
+
     sound.playClick();
 
     if (this.power === 'paused') {
@@ -770,10 +784,6 @@ class Scheme1Controller {
       this.enterEditMode('temp');
     } else if (this.editMode === 'temp') {
       this.enterEditMode('time');
-    } else if (this.editMode === 'reservation') {
-      // Already in reservation, click cycle
-      this.editMode = 'time';
-      this.render();
     }
   }
 
@@ -806,22 +816,33 @@ class Scheme1Controller {
     sound.playClick();
     if (this.power === 'reserved' || this.editMode === 'reservation') {
       // Cancel reservation and return to standby
-      this.power = 'standby';
-      this.exitEditMode();
+      this.cancelReservation();
       return;
     }
 
-    // Enter reservation editing
+    if (this.power === 'standby') {
+      // Enter reservation editing
+      this.power = 'standby';
+      this.editMode = 'reservation';
+      this.reserveIndex = 3; // Default 02:00
+      this.stopStandbyCarousel();
+
+      // 1-minute auto-cancel if start not pressed
+      clearTimeout(this.inactivityTimer);
+      this.inactivityTimer = setTimeout(() => {
+        this.cancelReservation();
+      }, 60000);
+
+      this.render();
+    }
+  }
+
+  cancelReservation() {
     this.power = 'standby';
-    this.editMode = 'reservation';
-    this.stopStandbyCarousel();
-
-    // 1-minute auto-cancel if start not pressed
+    this.editMode = 'none';
+    clearInterval(this.countdownTimer);
     clearTimeout(this.inactivityTimer);
-    this.inactivityTimer = setTimeout(() => {
-      this.exitEditMode();
-    }, 60000);
-
+    this.startStandbyCarousel();
     this.render();
   }
 
@@ -831,7 +852,23 @@ class Scheme1Controller {
     this.editMode = 'none';
     clearTimeout(this.inactivityTimer);
     this.stopStandbyCarousel();
+    this.remainingSec = timeStrToMinutes(this.currentReserveStr) * 60;
+    this.startReserveCountdown();
     this.render();
+  }
+
+  startReserveCountdown() {
+    clearInterval(this.countdownTimer);
+    this.countdownTimer = setInterval(() => {
+      if (this.power === 'reserved' && this.remainingSec > 0) {
+        this.remainingSec--;
+        this.renderDigits();
+        if (this.remainingSec <= 0) {
+          sound.playAlert();
+          this.startRunning();
+        }
+      }
+    }, 1000);
   }
 
   // ==================== BABY MODE & CHILD LOCK ====================
@@ -839,6 +876,7 @@ class Scheme1Controller {
     if (this.isSyntheticMouseEvent(e)) return;
     if (e) e.stopPropagation();
     if (this.interceptLockedOrLowPower()) return;
+    if (this.editMode === 'reservation' || this.power === 'reserved') return;
     this.babyPressStart = Date.now();
     this.babyLongPressed = false;
     clearTimeout(this.babyPressTimer);
@@ -872,6 +910,7 @@ class Scheme1Controller {
     if (this.babyPressStart && Date.now() - this.babyPressStart < 2000) {
       this.babyPressStart = 0;
       if (this.interceptLockedOrLowPower()) return;
+      if (this.editMode === 'reservation' || this.power === 'reserved') return;
       this.toggleBabyMode();
     }
     this.babyPressStart = 0;
@@ -1002,12 +1041,17 @@ class Scheme1Controller {
     const dryEl = this.root.querySelector('.pill-dry');
     const powerCenter = this.root.querySelector('.pill-power-center');
 
+    const isReservedOrSetting = (this.editMode === 'reservation' || isReserved);
+
     if (heatEl) {
       if (isOff) {
         heatEl.style.opacity = '0';
         heatEl.style.pointerEvents = 'none';
       } else if (isRunning) {
         heatEl.style.opacity = this.mode === 'heat' ? '1' : '0';
+        heatEl.style.pointerEvents = 'none';
+      } else if (isReservedOrSetting) {
+        heatEl.style.opacity = this.mode === 'heat' ? '1' : '0.25';
         heatEl.style.pointerEvents = 'none';
       } else {
         heatEl.style.opacity = this.mode === 'heat' ? '1' : '0.25';
@@ -1023,6 +1067,9 @@ class Scheme1Controller {
         dryEl.style.pointerEvents = 'none';
       } else if (isRunning) {
         dryEl.style.opacity = this.mode === 'dry' ? '1' : '0';
+        dryEl.style.pointerEvents = 'none';
+      } else if (isReservedOrSetting) {
+        dryEl.style.opacity = this.mode === 'dry' ? '1' : '0.25';
         dryEl.style.pointerEvents = 'none';
       } else {
         dryEl.style.opacity = this.mode === 'dry' ? '1' : '0.25';
@@ -1087,6 +1134,9 @@ class Scheme1Controller {
           babyBtn.style.opacity = '0';
           babyBtn.style.pointerEvents = 'none';
         }
+      } else if (isReservedOrSetting) {
+        babyBtn.style.pointerEvents = 'none';
+        babyBtn.style.opacity = '0.25';
       } else {
         babyBtn.style.pointerEvents = 'auto';
         babyBtn.style.opacity = this.babyMode ? '1' : '0.25';
@@ -1313,9 +1363,16 @@ class Scheme1Controller {
       d1 = h[0]; d2 = h[1]; d3 = m[0]; d4 = m[1];
     }
     // 2. Reservation setup
-    else if (this.editMode === 'reservation' || this.power === 'reserved') {
+    else if (this.editMode === 'reservation') {
       showColon = true;
       const str = this.currentReserveStr;
+      const [h, m] = str.split(':');
+      d1 = h[0]; d2 = h[1]; d3 = m[0]; d4 = m[1];
+    }
+    // 2b. Reservation countdown
+    else if (this.power === 'reserved') {
+      showColon = true;
+      const str = formatCountdown(this.remainingSec);
       const [h, m] = str.split(':');
       d1 = h[0]; d2 = h[1]; d3 = m[0]; d4 = m[1];
     }
@@ -1370,12 +1427,17 @@ class Scheme2Controller {
     this.tempIndex = 1;
     this.heatTimeIndex = 2; // 00:40
     this.dryTimeIndex = 0; // 01:00
+    this.reserveIndex = 3; // 02:00
     this.savedPreBabyTempIndex = 1;
 
     this.remainingSec = 40 * 60;
     this.countdownTimer = null;
     this.inactivityTimer = null;
     this.lastTouchTime = 0;
+
+    this.compPressTimer = null;
+    this.compPressStartTime = 0;
+    this.compLongPressed = false;
 
     this.bindEvents();
     this.render();
@@ -1399,6 +1461,10 @@ class Scheme2Controller {
     return this.mode === 'heat' 
       ? HEAT_TIME_PRESETS[this.heatTimeIndex] 
       : DRY_TIME_PRESETS[this.dryTimeIndex];
+  }
+
+  get currentReserveStr() {
+    return RESERVATION_PRESETS[this.reserveIndex];
   }
 
   bindEvents() {
@@ -1427,10 +1493,18 @@ class Scheme2Controller {
       drySection.addEventListener('click', () => this.setMode('dry'));
     }
 
-    // Bottom Composite Key
+    // Bottom Composite Key (Short click: cycle edit; Long press 2s: Reservation)
     const compBtn = this.root.querySelector('.btn-composite-key');
     if (compBtn) {
-      compBtn.addEventListener('click', () => this.cycleCompositeKey());
+      const startComp = (e) => this.handleCompPressStart(e);
+      const endComp = (e) => this.handleCompPressEnd(e);
+      const cancelComp = () => this.handleCompPressCancel();
+      compBtn.addEventListener('mousedown', startComp);
+      compBtn.addEventListener('touchstart', startComp, { passive: true });
+      compBtn.addEventListener('mouseup', endComp);
+      compBtn.addEventListener('mouseleave', cancelComp);
+      compBtn.addEventListener('touchend', endComp);
+      compBtn.addEventListener('touchcancel', cancelComp);
     }
 
     // Baby Mode Key
@@ -1526,6 +1600,14 @@ class Scheme2Controller {
       return;
     }
     sound.playClick();
+    if (this.editMode === 'reservation') {
+      this.confirmReservation();
+      return;
+    }
+    if (this.power === 'reserved') {
+      this.startRunning();
+      return;
+    }
     if (this.power === 'standby') {
       this.startRunning();
     } else if (this.power === 'running') {
@@ -1576,8 +1658,100 @@ class Scheme2Controller {
     }, 1000);
   }
 
+  // ==================== RESERVATION LOGIC ====================
+  handleCompPressStart(e) {
+    if (this.isSyntheticMouseEvent(e)) return;
+    if (this.power === 'off') return;
+    this.compPressStartTime = Date.now();
+    this.compLongPressed = false;
+    clearTimeout(this.compPressTimer);
+
+    // Long press 2s triggers reservation setup or cancels reservation
+    this.compPressTimer = setTimeout(() => {
+      this.compLongPressed = true;
+      this.toggleReservation();
+    }, 2000);
+  }
+
+  handleCompPressCancel() {
+    clearTimeout(this.compPressTimer);
+    this.compPressStartTime = 0;
+  }
+
+  handleCompPressEnd(e) {
+    if (this.isSyntheticMouseEvent(e)) return;
+    if (e && e.cancelable && e.type && e.type.startsWith('touch')) {
+      e.preventDefault();
+    }
+    clearTimeout(this.compPressTimer);
+    if (this.compLongPressed) {
+      this.compPressStartTime = 0;
+      return;
+    }
+
+    if (this.compPressStartTime && Date.now() - this.compPressStartTime < 2000) {
+      this.compPressStartTime = 0;
+      // In reservation setup or reserved countdown, short click does nothing!
+      if (this.editMode === 'reservation' || this.power === 'reserved') return;
+      this.cycleCompositeKey();
+    }
+    this.compPressStartTime = 0;
+  }
+
+  toggleReservation() {
+    sound.playClick();
+    if (this.power === 'reserved' || this.editMode === 'reservation') {
+      this.cancelReservation();
+      return;
+    }
+
+    if (this.power === 'standby') {
+      this.power = 'standby';
+      this.editMode = 'reservation';
+      this.reserveIndex = 3; // Default 02:00
+      clearTimeout(this.inactivityTimer);
+      this.inactivityTimer = setTimeout(() => {
+        this.cancelReservation();
+      }, 60000);
+      this.render();
+    }
+  }
+
+  cancelReservation() {
+    this.power = 'standby';
+    this.editMode = 'none';
+    clearInterval(this.countdownTimer);
+    clearTimeout(this.inactivityTimer);
+    this.render();
+  }
+
+  confirmReservation() {
+    sound.playClick();
+    this.power = 'reserved';
+    this.editMode = 'none';
+    clearTimeout(this.inactivityTimer);
+    this.remainingSec = timeStrToMinutes(this.currentReserveStr) * 60;
+    this.startReserveCountdown();
+    this.render();
+  }
+
+  startReserveCountdown() {
+    clearInterval(this.countdownTimer);
+    this.countdownTimer = setInterval(() => {
+      if (this.power === 'reserved' && this.remainingSec > 0) {
+        this.remainingSec--;
+        this.renderTimeDigits();
+        if (this.remainingSec <= 0) {
+          sound.playAlert();
+          this.startRunning();
+        }
+      }
+    }, 1000);
+  }
+
   cycleCompositeKey() {
     if (this.power === 'off') return;
+    if (this.editMode === 'reservation' || this.power === 'reserved') return;
     sound.playClick();
     this.resetInactivityTimer();
 
@@ -1589,9 +1763,6 @@ class Scheme2Controller {
       return;
     }
 
-    // User confirmed Q1:
-    // In default state: both left and right are [+]
-    // Once in edit mode: left changes to [-], right stays [+]
     if (this.mode === 'dry') {
       this.editMode = this.editMode === 'none' ? 'time' : 'none';
     } else if (this.editMode === 'none') {
@@ -1606,6 +1777,7 @@ class Scheme2Controller {
 
   enterEdit(type) {
     if (this.power === 'off') return;
+    if (this.editMode === 'reservation' || this.power === 'reserved') return;
     if (type === 'temp' && (this.babyMode || this.mode === 'dry')) return;
     sound.playClick();
     if (this.power === 'paused') {
@@ -1619,6 +1791,7 @@ class Scheme2Controller {
 
   setMode(mode) {
     if (this.power === 'off') return;
+    if (this.editMode === 'reservation' || this.power === 'reserved') return;
     if (this.mode === mode && this.power !== 'paused') return;
     sound.playMode();
     if (this.power === 'paused') {
@@ -1634,6 +1807,7 @@ class Scheme2Controller {
 
   toggleBabyMode() {
     if (this.power === 'off') return;
+    if (this.editMode === 'reservation' || this.power === 'reserved') return;
     sound.playClick();
     if (this.power === 'paused') {
       this.power = 'standby';
@@ -1658,16 +1832,26 @@ class Scheme2Controller {
   }
 
   handleLeftAdjust() {
-    if (this.power === 'off' || this.power === 'running' || this.power === 'paused') return;
+    if (this.power === 'off' || this.power === 'running' || this.power === 'paused' || this.power === 'reserved') return;
     if (this.editMode === 'none') return;
     this.adjustParam(-1);
   }
 
   adjustParam(delta) {
-    if (this.power === 'off' || this.power === 'running' || this.power === 'paused') return;
+    if (this.power === 'off' || this.power === 'running' || this.power === 'paused' || this.power === 'reserved') return;
     if (this.editMode === 'none') return;
     sound.playClick();
     this.resetInactivityTimer();
+
+    if (this.editMode === 'reservation') {
+      const max = RESERVATION_PRESETS.length - 1;
+      const next = this.reserveIndex + delta;
+      if (next >= 0 && next <= max) {
+        this.reserveIndex = next;
+      }
+      this.render();
+      return;
+    }
 
     if (this.editMode === 'temp') {
       if (this.babyMode || this.mode === 'dry') return;
@@ -1713,9 +1897,19 @@ class Scheme2Controller {
       btn.style.setProperty('pointer-events', 'auto', 'important');
     };
 
-    if (isOff || isRunning || this.power === 'paused' || this.editMode === 'none') {
+    if (isOff || isRunning || this.power === 'reserved' || this.power === 'paused' || this.editMode === 'none') {
       hide(leftBtn);
       hide(rightBtn);
+      return;
+    }
+
+    if (this.editMode === 'reservation') {
+      const max = RESERVATION_PRESETS.length - 1;
+      if (this.reserveIndex <= 0) hide(leftBtn);
+      else show(leftBtn);
+
+      if (this.reserveIndex >= max) hide(rightBtn);
+      else show(rightBtn);
       return;
     }
 
@@ -1772,6 +1966,8 @@ class Scheme2Controller {
     const isOff = this.power === 'off';
     const isRunning = this.power === 'running';
     const isPaused = this.power === 'paused';
+    const isReserved = this.power === 'reserved';
+    const isReservedOrSetting = (this.editMode === 'reservation' || isReserved);
 
     this.root.classList.toggle('device-off', isOff);
     this.root.classList.toggle('running', isRunning);
@@ -1788,6 +1984,9 @@ class Scheme2Controller {
       } else if (isRunning) {
         heatEl.style.opacity = this.mode === 'heat' ? '1' : '0';
         heatEl.style.pointerEvents = 'none';
+      } else if (isReservedOrSetting) {
+        heatEl.style.opacity = this.mode === 'heat' ? '1' : '0.25';
+        heatEl.style.pointerEvents = 'none';
       } else {
         heatEl.style.opacity = this.mode === 'heat' ? '1' : '0.25';
         heatEl.style.pointerEvents = 'auto';
@@ -1801,6 +2000,9 @@ class Scheme2Controller {
         dryEl.style.pointerEvents = 'none';
       } else if (isRunning) {
         dryEl.style.opacity = this.mode === 'dry' ? '1' : '0';
+        dryEl.style.pointerEvents = 'none';
+      } else if (isReservedOrSetting) {
+        dryEl.style.opacity = this.mode === 'dry' ? '1' : '0.25';
         dryEl.style.pointerEvents = 'none';
       } else {
         dryEl.style.opacity = this.mode === 'dry' ? '1' : '0.25';
@@ -1837,6 +2039,9 @@ class Scheme2Controller {
           babyBtn.style.opacity = '0';
           babyBtn.style.pointerEvents = 'none';
         }
+      } else if (isReservedOrSetting) {
+        babyBtn.style.pointerEvents = 'none';
+        babyBtn.style.opacity = '0.25';
       } else {
         babyBtn.style.pointerEvents = 'auto';
         babyBtn.style.opacity = this.babyMode ? '1' : '0.25';
@@ -1867,15 +2072,14 @@ class Scheme2Controller {
         compBtn.style.pointerEvents = 'none';
       } else {
         compBtn.style.pointerEvents = 'auto';
-        compBtn.style.opacity = this.editMode !== 'none' ? '1' : '0.45';
+        const isEditing = (this.editMode === 'temp' || this.editMode === 'time' || this.editMode === 'reservation');
+        compBtn.style.opacity = isEditing ? '1' : '0.45';
         if (compImg) {
           const isTempFixed = this.mode === 'dry' || this.babyMode;
-          if (isTempFixed) {
+          if (isEditing) {
+            compImg.src = 'images/时间:温度icon/状态=全亮.svg';
+          } else if (isTempFixed) {
             compImg.src = 'images/时间:温度icon/状态=仅时间可调.svg';
-          } else if (this.editMode === 'time') {
-            compImg.src = 'images/时间:温度icon/状态=仅时间可调.svg';
-          } else if (this.editMode === 'temp') {
-            compImg.src = 'images/时间:温度icon/状态=仅温度可调.svg';
           } else {
             compImg.src = 'images/时间:温度icon/状态=半亮.svg';
           }
@@ -1885,10 +2089,15 @@ class Scheme2Controller {
 
     // Status icons
     const iconWifi = this.root.querySelector('.s2-icon-wifi');
+    const iconAlarm = this.root.querySelector('.s2-icon-alarm');
     const iconIon = this.root.querySelector('.s2-icon-ion');
     const iconF = this.root.querySelector('.s2-icon-f');
     const iconC = this.root.querySelector('.s2-icon-c');
     if (iconWifi) iconWifi.classList.toggle('active', !isOff);
+    if (iconAlarm) {
+      const showAlarm = this.editMode === 'reservation' || isReserved;
+      iconAlarm.classList.toggle('active', showAlarm && !isOff);
+    }
     const isOperating = (isRunning || isPaused);
     if (iconIon) iconIon.classList.toggle('active', isOperating && !isOff);
     if (iconF) iconF.classList.toggle('active', !isOff && this.unit === 'F');
@@ -1915,12 +2124,20 @@ class Scheme2Controller {
     const timeContainer = this.root.querySelector('.s23-time-digits');
     if (!timeContainer) return;
     const isPaused = this.power === 'paused';
-    timeContainer.classList.toggle('blinking', this.editMode === 'time' && !isPaused);
+    const isEditing = (this.editMode === 'time' || this.editMode === 'reservation');
+    timeContainer.classList.toggle('blinking', isEditing && !isPaused);
     timeContainer.classList.toggle('pause-blink', isPaused);
 
-    const str = (this.power === 'running' || this.power === 'paused')
-      ? formatCountdown(this.remainingSec) 
-      : this.currentTimeStr;
+    let str;
+    if (this.power === 'running' || this.power === 'paused') {
+      str = formatCountdown(this.remainingSec);
+    } else if (this.power === 'reserved') {
+      str = formatCountdown(this.remainingSec);
+    } else if (this.editMode === 'reservation') {
+      str = this.currentReserveStr;
+    } else {
+      str = this.currentTimeStr;
+    }
     const [h, m] = str.split(':');
 
     timeContainer.innerHTML = `
@@ -1974,12 +2191,17 @@ class Scheme3Controller {
     this.tempIndex = 1;
     this.heatTimeIndex = 2; // 00:40
     this.dryTimeIndex = 0; // 01:00
+    this.reserveIndex = 3; // 02:00
     this.savedPreBabyTempIndex = 1;
 
     this.remainingSec = 40 * 60;
     this.countdownTimer = null;
     this.inactivityTimer = null;
     this.lastTouchTime = 0;
+
+    this.timePressTimer = null;
+    this.timePressStartTime = 0;
+    this.timeLongPressed = false;
 
     this.bindEvents();
     this.render();
@@ -2003,6 +2225,10 @@ class Scheme3Controller {
     return this.mode === 'heat' 
       ? HEAT_TIME_PRESETS[this.heatTimeIndex] 
       : DRY_TIME_PRESETS[this.dryTimeIndex];
+  }
+
+  get currentReserveStr() {
+    return RESERVATION_PRESETS[this.reserveIndex];
   }
 
   bindEvents() {
@@ -2037,10 +2263,18 @@ class Scheme3Controller {
       babyCenter.addEventListener('click', () => this.toggleBabyMode());
     }
 
-    // Independent Time Button (left)
+    // Independent Time Button (left) (Short click: time edit; Long press 2s: Reservation)
     const timeBtn = this.root.querySelector('.s3-time-btn');
     if (timeBtn) {
-      timeBtn.addEventListener('click', () => this.toggleTimeEdit());
+      const startTime = (e) => this.handleTimePressStart(e);
+      const endTime = (e) => this.handleTimePressEnd(e);
+      const cancelTime = () => this.handleTimePressCancel();
+      timeBtn.addEventListener('mousedown', startTime);
+      timeBtn.addEventListener('touchstart', startTime, { passive: true });
+      timeBtn.addEventListener('mouseup', endTime);
+      timeBtn.addEventListener('mouseleave', cancelTime);
+      timeBtn.addEventListener('touchend', endTime);
+      timeBtn.addEventListener('touchcancel', cancelTime);
     }
 
     // Independent Temp Button (right)
@@ -2124,6 +2358,14 @@ class Scheme3Controller {
       return;
     }
     sound.playClick();
+    if (this.editMode === 'reservation') {
+      this.confirmReservation();
+      return;
+    }
+    if (this.power === 'reserved') {
+      this.startRunning();
+      return;
+    }
     if (this.power === 'standby') {
       this.startRunning();
     } else if (this.power === 'running') {
@@ -2174,8 +2416,100 @@ class Scheme3Controller {
     }, 1000);
   }
 
+  // ==================== RESERVATION LOGIC ====================
+  handleTimePressStart(e) {
+    if (this.isSyntheticMouseEvent(e)) return;
+    if (this.power === 'off') return;
+    this.timePressStartTime = Date.now();
+    this.timeLongPressed = false;
+    clearTimeout(this.timePressTimer);
+
+    // Long press 2s triggers reservation setup or cancels reservation
+    this.timePressTimer = setTimeout(() => {
+      this.timeLongPressed = true;
+      this.toggleReservation();
+    }, 2000);
+  }
+
+  handleTimePressCancel() {
+    clearTimeout(this.timePressTimer);
+    this.timePressStartTime = 0;
+  }
+
+  handleTimePressEnd(e) {
+    if (this.isSyntheticMouseEvent(e)) return;
+    if (e && e.cancelable && e.type && e.type.startsWith('touch')) {
+      e.preventDefault();
+    }
+    clearTimeout(this.timePressTimer);
+    if (this.timeLongPressed) {
+      this.timePressStartTime = 0;
+      return;
+    }
+
+    if (this.timePressStartTime && Date.now() - this.timePressStartTime < 2000) {
+      this.timePressStartTime = 0;
+      // In reservation setup or reserved countdown, short click does nothing!
+      if (this.editMode === 'reservation' || this.power === 'reserved') return;
+      this.toggleTimeEdit();
+    }
+    this.timePressStartTime = 0;
+  }
+
+  toggleReservation() {
+    sound.playClick();
+    if (this.power === 'reserved' || this.editMode === 'reservation') {
+      this.cancelReservation();
+      return;
+    }
+
+    if (this.power === 'standby') {
+      this.power = 'standby';
+      this.editMode = 'reservation';
+      this.reserveIndex = 3; // Default 02:00
+      clearTimeout(this.inactivityTimer);
+      this.inactivityTimer = setTimeout(() => {
+        this.cancelReservation();
+      }, 60000);
+      this.render();
+    }
+  }
+
+  cancelReservation() {
+    this.power = 'standby';
+    this.editMode = 'none';
+    clearInterval(this.countdownTimer);
+    clearTimeout(this.inactivityTimer);
+    this.render();
+  }
+
+  confirmReservation() {
+    sound.playClick();
+    this.power = 'reserved';
+    this.editMode = 'none';
+    clearTimeout(this.inactivityTimer);
+    this.remainingSec = timeStrToMinutes(this.currentReserveStr) * 60;
+    this.startReserveCountdown();
+    this.render();
+  }
+
+  startReserveCountdown() {
+    clearInterval(this.countdownTimer);
+    this.countdownTimer = setInterval(() => {
+      if (this.power === 'reserved' && this.remainingSec > 0) {
+        this.remainingSec--;
+        this.renderTimeDigits();
+        if (this.remainingSec <= 0) {
+          sound.playAlert();
+          this.startRunning();
+        }
+      }
+    }, 1000);
+  }
+
   toggleTimeEdit() {
     if (this.power === 'off') return;
+    if (this.editMode === 'reservation' || this.power === 'reserved') return;
     sound.playClick();
     if (this.power === 'paused') {
       this.power = 'standby';
@@ -2188,6 +2522,7 @@ class Scheme3Controller {
 
   toggleTempEdit() {
     if (this.power === 'off' || this.babyMode || this.mode === 'dry') return;
+    if (this.editMode === 'reservation' || this.power === 'reserved') return;
     sound.playClick();
     if (this.power === 'paused') {
       this.power = 'standby';
@@ -2200,6 +2535,7 @@ class Scheme3Controller {
 
   setMode(mode) {
     if (this.power === 'off') return;
+    if (this.editMode === 'reservation' || this.power === 'reserved') return;
     if (this.mode === mode && this.power !== 'paused') return;
     sound.playMode();
     if (this.power === 'paused') {
@@ -2215,6 +2551,7 @@ class Scheme3Controller {
 
   toggleBabyMode() {
     if (this.power === 'off') return;
+    if (this.editMode === 'reservation' || this.power === 'reserved') return;
     sound.playClick();
     if (this.power === 'paused') {
       this.power = 'standby';
@@ -2239,10 +2576,20 @@ class Scheme3Controller {
   }
 
   adjustParam(delta) {
-    if (this.power === 'off' || this.power === 'running' || this.power === 'paused') return;
+    if (this.power === 'off' || this.power === 'running' || this.power === 'paused' || this.power === 'reserved') return;
     if (this.editMode === 'none') return;
     sound.playClick();
     this.resetInactivityTimer();
+
+    if (this.editMode === 'reservation') {
+      const max = RESERVATION_PRESETS.length - 1;
+      const next = this.reserveIndex + delta;
+      if (next >= 0 && next <= max) {
+        this.reserveIndex = next;
+      }
+      this.render();
+      return;
+    }
 
     if (this.editMode === 'temp') {
       if (this.babyMode || this.mode === 'dry') return;
@@ -2288,9 +2635,19 @@ class Scheme3Controller {
       btn.style.setProperty('pointer-events', 'auto', 'important');
     };
 
-    if (isOff || isRunning || this.power === 'paused' || this.editMode === 'none') {
+    if (isOff || isRunning || this.power === 'reserved' || this.power === 'paused' || this.editMode === 'none') {
       hide(leftBtn);
       hide(rightBtn);
+      return;
+    }
+
+    if (this.editMode === 'reservation') {
+      const max = RESERVATION_PRESETS.length - 1;
+      if (this.reserveIndex <= 0) hide(leftBtn);
+      else show(leftBtn);
+
+      if (this.reserveIndex >= max) hide(rightBtn);
+      else show(rightBtn);
       return;
     }
 
@@ -2347,6 +2704,8 @@ class Scheme3Controller {
     const isOff = this.power === 'off';
     const isRunning = this.power === 'running';
     const isPaused = this.power === 'paused';
+    const isReserved = this.power === 'reserved';
+    const isReservedOrSetting = (this.editMode === 'reservation' || isReserved);
 
     this.root.classList.toggle('device-off', isOff);
     this.root.classList.toggle('running', isRunning);
@@ -2363,6 +2722,9 @@ class Scheme3Controller {
       } else if (isRunning) {
         heatEl.style.opacity = this.mode === 'heat' ? '1' : '0';
         heatEl.style.pointerEvents = 'none';
+      } else if (isReservedOrSetting) {
+        heatEl.style.opacity = this.mode === 'heat' ? '1' : '0.25';
+        heatEl.style.pointerEvents = 'none';
       } else {
         heatEl.style.opacity = this.mode === 'heat' ? '1' : '0.25';
         heatEl.style.pointerEvents = 'auto';
@@ -2376,6 +2738,9 @@ class Scheme3Controller {
         dryEl.style.pointerEvents = 'none';
       } else if (isRunning) {
         dryEl.style.opacity = this.mode === 'dry' ? '1' : '0';
+        dryEl.style.pointerEvents = 'none';
+      } else if (isReservedOrSetting) {
+        dryEl.style.opacity = this.mode === 'dry' ? '1' : '0.25';
         dryEl.style.pointerEvents = 'none';
       } else {
         dryEl.style.opacity = this.mode === 'dry' ? '1' : '0.25';
@@ -2396,6 +2761,9 @@ class Scheme3Controller {
           babyCenter.style.opacity = '0';
           babyCenter.style.pointerEvents = 'none';
         }
+      } else if (isReservedOrSetting) {
+        babyCenter.style.pointerEvents = 'none';
+        babyCenter.style.opacity = '0.25';
       } else {
         babyCenter.style.pointerEvents = 'auto';
         babyCenter.style.opacity = this.babyMode ? '1' : '0.25';
@@ -2419,10 +2787,11 @@ class Scheme3Controller {
         timeBtn.style.opacity = '0';
         timeBtn.style.pointerEvents = 'none';
       } else {
-        timeBtn.style.opacity = this.editMode === 'time' ? '1' : '0.45';
+        const isEditingTime = (this.editMode === 'time' || this.editMode === 'reservation');
+        timeBtn.style.opacity = isEditingTime ? '1' : '0.45';
         timeBtn.style.pointerEvents = 'auto';
       }
-      timeBtn.classList.toggle('active', this.editMode === 'time');
+      timeBtn.classList.toggle('active', this.editMode === 'time' || this.editMode === 'reservation');
     }
     if (tempBtn) {
       const isTempFixed = this.mode === 'dry' || this.babyMode;
@@ -2432,11 +2801,14 @@ class Scheme3Controller {
       } else if (isRunning || isTempFixed) {
         tempBtn.style.opacity = '0';
         tempBtn.style.pointerEvents = 'none';
+      } else if (isReservedOrSetting) {
+        tempBtn.style.opacity = '0.25';
+        tempBtn.style.pointerEvents = 'none';
       } else {
         tempBtn.style.opacity = this.editMode === 'temp' ? '1' : '0.45';
         tempBtn.style.pointerEvents = 'auto';
       }
-      tempBtn.classList.toggle('active', this.editMode === 'temp' && !isTempFixed);
+      tempBtn.classList.toggle('active', this.editMode === 'temp' && !isTempFixed && !isReservedOrSetting);
     }
 
     // Standalone power button
@@ -2462,10 +2834,15 @@ class Scheme3Controller {
 
     // Status icons
     const iconWifi = this.root.querySelector('.s3-icon-wifi');
+    const iconAlarm = this.root.querySelector('.s3-icon-alarm');
     const iconIon = this.root.querySelector('.s3-icon-ion');
     const iconF = this.root.querySelector('.s3-icon-f');
     const iconC = this.root.querySelector('.s3-icon-c');
     if (iconWifi) iconWifi.classList.toggle('active', !isOff);
+    if (iconAlarm) {
+      const showAlarm = this.editMode === 'reservation' || isReserved;
+      iconAlarm.classList.toggle('active', showAlarm && !isOff);
+    }
     const isOperating = (isRunning || isPaused);
     if (iconIon) iconIon.classList.toggle('active', isOperating && !isOff);
     if (iconF) iconF.classList.toggle('active', !isOff && this.unit === 'F');
@@ -2492,12 +2869,20 @@ class Scheme3Controller {
     const timeContainer = this.root.querySelector('.s3-time-digits');
     if (!timeContainer) return;
     const isPaused = this.power === 'paused';
-    timeContainer.classList.toggle('blinking', this.editMode === 'time' && !isPaused);
+    const isEditing = (this.editMode === 'time' || this.editMode === 'reservation');
+    timeContainer.classList.toggle('blinking', isEditing && !isPaused);
     timeContainer.classList.toggle('pause-blink', isPaused);
 
-    const str = (this.power === 'running' || this.power === 'paused')
-      ? formatCountdown(this.remainingSec) 
-      : this.currentTimeStr;
+    let str;
+    if (this.power === 'running' || this.power === 'paused') {
+      str = formatCountdown(this.remainingSec);
+    } else if (this.power === 'reserved') {
+      str = formatCountdown(this.remainingSec);
+    } else if (this.editMode === 'reservation') {
+      str = this.currentReserveStr;
+    } else {
+      str = this.currentTimeStr;
+    }
     const [h, m] = str.split(':');
 
     timeContainer.innerHTML = `
