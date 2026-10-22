@@ -2337,15 +2337,16 @@ class Scheme2Controller {
         compBtn.style.pointerEvents = 'none';
       } else {
         compBtn.style.pointerEvents = 'auto';
-        const isEditing = (this.editMode === 'temp' || this.editMode === 'time' || this.editMode === 'reservation');
-        compBtn.style.opacity = isEditing ? '1' : '0.45';
+        compBtn.style.opacity = '1';
         if (compImg) {
-          const isTempFixed = this.mode === 'dry' || this.babyMode;
-          if (isEditing) {
-            compImg.src = 'images/时间:温度icon/状态=全亮.svg';
-          } else if (isTempFixed) {
+          if (this.editMode === 'temp') {
+            // 调整温度时：温度icon全亮，时间icon半亮
+            compImg.src = 'images/时间:温度icon/状态=仅温度可调.svg';
+          } else if (this.editMode === 'time' || this.editMode === 'reservation') {
+            // 调整时间时：时间icon全亮，温度icon半亮
             compImg.src = 'images/时间:温度icon/状态=仅时间可调.svg';
           } else {
+            // 待机状态：时间温度icon均为半亮
             compImg.src = 'images/时间:温度icon/状态=半亮.svg';
           }
         }
@@ -2393,6 +2394,13 @@ class Scheme2Controller {
     timeContainer.classList.toggle('blinking', isEditing && !isPaused);
     timeContainer.classList.toggle('pause-blink', isPaused);
 
+    // 调整温度时，时间数字半亮 (opacity 0.4)
+    if (this.editMode === 'temp') {
+      timeContainer.style.opacity = '0.4';
+    } else {
+      timeContainer.style.opacity = '';
+    }
+
     let str;
     if (this.power === 'running' || this.power === 'paused') {
       str = formatCountdown(this.remainingSec);
@@ -2418,6 +2426,19 @@ class Scheme2Controller {
     const tempContainer = this.root.querySelector('.s2-temp-digits');
     if (!tempContainer) return;
     tempContainer.classList.toggle('blinking', this.editMode === 'temp');
+
+    // 调整时间时，温度数字及单位半亮 (opacity 0.4)
+    const iconF = this.root.querySelector('.s2-icon-f');
+    const iconC = this.root.querySelector('.s2-icon-c');
+    if (this.editMode === 'time' || this.editMode === 'reservation') {
+      tempContainer.style.opacity = '0.4';
+      if (iconF) iconF.style.opacity = '0.4';
+      if (iconC) iconC.style.opacity = '0.4';
+    } else {
+      tempContainer.style.opacity = '';
+      if (iconF) iconF.style.opacity = '';
+      if (iconC) iconC.style.opacity = '';
+    }
 
     const tempNum = String(this.currentTemp);
     let d1 = ' ', d2 = ' ', d3 = ' ';
