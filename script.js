@@ -2202,6 +2202,7 @@ class Scheme3Controller {
     this.timePressTimer = null;
     this.timePressStartTime = 0;
     this.timeLongPressed = false;
+    this.childLocked = false;
 
     this.bindEvents();
     this.render();
@@ -2844,7 +2845,7 @@ class Scheme3Controller {
       const showAlarm = this.editMode === 'reservation' || isReserved;
       iconAlarm.classList.toggle('active', showAlarm && !isOff);
     }
-    if (iconLock) iconLock.classList.toggle('active', this.childLocked && !isOff);
+    if (iconLock) iconLock.classList.toggle('active', Boolean(this.childLocked && !isOff));
     const isOperating = (isRunning || isPaused);
     if (iconIon) iconIon.classList.toggle('active', isOperating && !isOff);
     if (iconF) iconF.classList.toggle('active', !isOff && this.unit === 'F');
