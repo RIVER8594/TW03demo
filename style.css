@@ -538,27 +538,41 @@ body.is-embedded .device-wrapper {
 .divider-glow-sweep {
   position: absolute;
   top: 0;
-  left: -40%;
-  width: 45%;
+  left: -15%;
+  width: 38%;
   height: 100%;
-  background: linear-gradient(90deg, rgba(255, 204, 0, 0) 0%, #ffcc00 50%, rgba(255, 204, 0, 0) 100%);
+  background: linear-gradient(90deg, rgba(255, 204, 0, 0) 0%, rgba(255, 220, 50, 0.95) 50%, rgba(255, 204, 0, 0) 100%);
   opacity: 0;
   border-radius: 1px;
-  box-shadow: 0 0 5px rgba(255, 204, 0, 0.85);
+  box-shadow: 0 0 6px rgba(255, 204, 0, 0.9);
+  pointer-events: none;
 }
 
-@keyframes goldenSweep {
-  0% { left: -45%; }
-  100% { left: 100%; }
+@keyframes goldenSweepPingPong {
+  0% {
+    left: -15%;
+  }
+  50% {
+    left: 77%;
+  }
+  100% {
+    left: -15%;
+  }
 }
 
 .running .divider-glow-sweep {
   opacity: 1;
-  animation: goldenSweep 2.2s infinite ease-in-out;
+  animation: goldenSweepPingPong 2.4s infinite ease-in-out;
+}
+
+.paused .divider-glow-sweep {
+  opacity: 0.6;
+  animation: goldenSweepPingPong 2.4s infinite ease-in-out;
+  animation-play-state: paused;
 }
 
 .running .divider-static-line {
-  opacity: 0.1;
+  opacity: 0.15;
 }
 
 /* ---------------- Buttons & Touch Targets ---------------- */
