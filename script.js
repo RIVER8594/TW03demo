@@ -1258,10 +1258,17 @@ class Scheme1Controller {
     const iconWifi = this.root.querySelector('.s1-icon-wifi');
     const iconAlarm = this.root.querySelector('.s1-icon-alarm');
     const iconLock = this.root.querySelector('.s1-icon-lock');
+    const iconIon = this.root.querySelector('.s1-icon-ion');
     const iconF = this.root.querySelector('.s1-icon-f');
     const iconC = this.root.querySelector('.s1-icon-c');
 
     if (iconWifi) iconWifi.classList.toggle('active', !isOff);
+
+    // Negative Ion Icon: lit up whenever device is operating (running / paused)
+    const isOperating = (this.power === 'running' || this.power === 'paused');
+    if (iconIon) {
+      iconIon.classList.toggle('active', isOperating && !isOff);
+    }
 
     // Alarm Icon (Reservation)
     if (iconAlarm) {
@@ -1878,9 +1885,12 @@ class Scheme2Controller {
 
     // Status icons
     const iconWifi = this.root.querySelector('.s2-icon-wifi');
+    const iconIon = this.root.querySelector('.s2-icon-ion');
     const iconF = this.root.querySelector('.s2-icon-f');
     const iconC = this.root.querySelector('.s2-icon-c');
-    if (iconWifi) iconWifi.classList.add('active');
+    if (iconWifi) iconWifi.classList.toggle('active', !isOff);
+    const isOperating = (isRunning || isPaused);
+    if (iconIon) iconIon.classList.toggle('active', isOperating && !isOff);
     if (iconF) iconF.classList.toggle('active', !isOff && this.unit === 'F');
     if (iconC) iconC.classList.toggle('active', !isOff && this.unit === 'C');
 
@@ -2452,9 +2462,12 @@ class Scheme3Controller {
 
     // Status icons
     const iconWifi = this.root.querySelector('.s3-icon-wifi');
+    const iconIon = this.root.querySelector('.s3-icon-ion');
     const iconF = this.root.querySelector('.s3-icon-f');
     const iconC = this.root.querySelector('.s3-icon-c');
-    if (iconWifi) iconWifi.classList.add('active');
+    if (iconWifi) iconWifi.classList.toggle('active', !isOff);
+    const isOperating = (isRunning || isPaused);
+    if (iconIon) iconIon.classList.toggle('active', isOperating && !isOff);
     if (iconF) iconF.classList.toggle('active', !isOff && this.unit === 'F');
     if (iconC) iconC.classList.toggle('active', !isOff && this.unit === 'C');
 

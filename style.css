@@ -437,6 +437,13 @@ body.is-embedded .device-wrapper {
   filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.8));
 }
 
+.s1-icon-ion.active,
+.s2-icon-ion.active,
+.s3-icon-ion.active {
+  opacity: 1;
+  filter: drop-shadow(0 0 5px rgba(30, 255, 104, 0.85)) drop-shadow(0 0 10px rgba(30, 255, 104, 0.45));
+}
+
 /* Scheme 1 Icon Positions */
 .s1-icon-wifi { left: 40.04%; top: 43.13%; }
 .s1-icon-alarm { left: 40.04%; top: 46.03%; }
