@@ -1373,6 +1373,56 @@ body.is-embedded .device-wrapper {
   color: rgba(255, 255, 255, 0.5);
 }
 
+.poll-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.poll-cloud-status-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.poll-cloud-status-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+.cloud-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #8892b0;
+  transition: all 0.3s ease;
+}
+
+.poll-cloud-status-btn.connected .cloud-dot {
+  background: #00cf4d;
+  box-shadow: 0 0 8px rgba(0, 207, 77, 0.8);
+}
+
+.poll-cloud-status-btn.syncing .cloud-dot {
+  background: #eab308;
+  box-shadow: 0 0 8px rgba(234, 179, 8, 0.8);
+}
+
+.poll-cloud-status-btn.error .cloud-dot {
+  background: #ff4d4f;
+  box-shadow: 0 0 8px rgba(255, 77, 79, 0.8);
+}
+
 .poll-close-btn {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -1819,4 +1869,192 @@ body.is-embedded .device-wrapper {
 @keyframes slideInRow {
   from { opacity: 0; transform: translateY(-6px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+.poll-title-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.poll-refresh-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.7);
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.poll-refresh-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #00cf4d;
+}
+
+.poll-refresh-btn.spinning svg {
+  animation: spinRefresh 0.8s linear infinite;
+}
+
+@keyframes spinRefresh {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* LeanCloud Config Modal */
+.poll-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+  animation: fadeIn 0.2s ease;
+}
+
+.poll-modal-card {
+  background: #151b26;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  max-width: 440px;
+  width: 100%;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  animation: zoomInModal 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes zoomInModal {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.poll-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.poll-modal-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.poll-modal-close {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
+  border-radius: 6px;
+  transition: color 0.2s ease;
+}
+
+.poll-modal-close:hover {
+  color: #ffffff;
+}
+
+.poll-modal-body {
+  padding: 20px;
+}
+
+.poll-modal-tip {
+  margin: 0 0 16px 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(0, 207, 77, 0.08);
+  border: 1px solid rgba(0, 207, 77, 0.2);
+  padding: 10px 12px;
+  border-radius: 8px;
+}
+
+.poll-input-hint {
+  margin-top: 5px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.poll-modal-feedback {
+  min-height: 18px;
+  margin: 12px 0 0 0;
+  font-size: 12px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  display: none;
+}
+
+.poll-modal-feedback.show-error {
+  display: block;
+  background: rgba(255, 77, 79, 0.15);
+  color: #ff7875;
+  border: 1px solid rgba(255, 77, 79, 0.3);
+}
+
+.poll-modal-feedback.show-success {
+  display: block;
+  background: rgba(0, 207, 77, 0.15);
+  color: #00cf4d;
+  border: 1px solid rgba(0, 207, 77, 0.3);
+}
+
+.poll-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.poll-modal-btn {
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.poll-modal-btn.btn-clear {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.poll-modal-btn.btn-clear:hover {
+  background: rgba(255, 77, 79, 0.2);
+  color: #ff7875;
+}
+
+.poll-modal-btn.btn-save {
+  background: linear-gradient(135deg, #00cf4d 0%, #00b341 100%);
+  color: #0a1017;
+  font-weight: 700;
+  box-shadow: 0 2px 10px rgba(0, 207, 77, 0.4);
+}
+
+.poll-modal-btn.btn-save:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 4px 14px rgba(0, 207, 77, 0.6);
 }

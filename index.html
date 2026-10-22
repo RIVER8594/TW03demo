@@ -515,10 +515,16 @@
         <div class="poll-title-icon">📊</div>
         <div>
           <h3 class="poll-title">方案投票问卷</h3>
-          <p class="poll-subtitle">每人限投一票 · 实时计票</p>
+          <p class="poll-subtitle">每人限投一票 · 真实数据</p>
         </div>
       </div>
-      <button class="poll-close-btn" id="btnClosePoll" type="button" title="关闭问卷">✕</button>
+      <div class="poll-header-actions">
+        <button class="poll-cloud-status-btn" id="btnOpenCloudModal" type="button" title="点击配置 LeanCloud 云端数据库实时同步">
+          <span class="cloud-dot" id="cloudStatusDot"></span>
+          <span id="cloudStatusText">云端配置</span>
+        </button>
+        <button class="poll-close-btn" id="btnClosePoll" type="button" title="关闭问卷">✕</button>
+      </div>
     </div>
 
     <div class="poll-body">
@@ -571,7 +577,12 @@
       <!-- Chart Section -->
       <div class="poll-card poll-chart-card">
         <div class="poll-section-title">
-          <span>实时得票统计</span>
+          <div class="poll-title-left">
+            <span>实时得票统计</span>
+            <button type="button" class="poll-refresh-btn" id="btnRefreshPoll" title="刷新最新得票数据">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            </button>
+          </div>
           <span class="poll-total-votes" id="pollTotalVotesText">共 0 票</span>
         </div>
 
@@ -621,6 +632,41 @@
       </div>
     </div>
   </aside>
+
+  <!-- LeanCloud Config Modal -->
+  <div class="poll-modal-backdrop" id="cloudModalBackdrop" style="display: none;">
+    <div class="poll-modal-card">
+      <div class="poll-modal-header">
+        <div class="poll-modal-title">
+          <span>☁️ LeanCloud 云端实时同步设置</span>
+        </div>
+        <button type="button" class="poll-modal-close" id="btnCloseCloudModal">✕</button>
+      </div>
+      <div class="poll-modal-body">
+        <p class="poll-modal-tip">
+          绑定 LeanCloud 后，所有人无论在手机、电脑打开本页面，投票数据都会实时汇总到云端，做到真正的全员实时在线计票。
+        </p>
+        <div class="poll-field">
+          <label class="poll-label" for="lcAppIdInput">App ID <span class="required">*</span></label>
+          <input type="text" id="lcAppIdInput" class="poll-input" placeholder="例如：7zX8y...-gzGzoHsz" autocomplete="off">
+        </div>
+        <div class="poll-field">
+          <label class="poll-label" for="lcAppKeyInput">App Key <span class="required">*</span></label>
+          <input type="password" id="lcAppKeyInput" class="poll-input" placeholder="例如：k8Y2..." autocomplete="off">
+        </div>
+        <div class="poll-field">
+          <label class="poll-label" for="lcServerUrlInput">REST API 域名 (Server URL) <span class="required">*</span></label>
+          <input type="text" id="lcServerUrlInput" class="poll-input" placeholder="例如：https://xxx.lc-cn-n1-shared.com" autocomplete="off">
+          <div class="poll-input-hint">可在 LeanCloud 控制台「设置」->「应用凭证」中查看</div>
+        </div>
+        <div class="poll-modal-feedback" id="cloudModalFeedback"></div>
+        <div class="poll-modal-footer">
+          <button type="button" class="poll-modal-btn btn-clear" id="btnClearCloudConfig">清除配置</button>
+          <button type="button" class="poll-modal-btn btn-save" id="btnSaveCloudConfig">测试连接并保存</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script src="script.js"></script>
   <script>
@@ -880,7 +926,7 @@
         }
       });
 
-      // ==================== POLL / SURVEY LOGIC ====================
+      // ==================== REAL POLL / LEANCLOUD LOGIC ====================
       const pollDrawer = document.getElementById('pollDrawer');
       const pollBackdrop = document.getElementById('pollBackdrop');
       const btnOpenPoll = document.getElementById('btnOpenPoll');
@@ -893,22 +939,32 @@
       const pollTotalVotesText = document.getElementById('pollTotalVotesText');
       const pollRecordsList = document.getElementById('pollRecordsList');
 
-      const STORAGE_KEY = 'tw03_poll_votes_records_v1';
+      // Cloud status and controls
+      const btnOpenCloudModal = document.getElementById('btnOpenCloudModal');
+      const cloudStatusDot = document.getElementById('cloudStatusDot');
+      const cloudStatusText = document.getElementById('cloudStatusText');
+      const btnRefreshPoll = document.getElementById('btnRefreshPoll');
 
-      // Default sample records matching UI sketch (方案1: 2票, 方案2: 6票, 方案3: 3票)
-      const DEFAULT_RECORDS = [
-        { name: '张三', scheme: 2, time: '09:20' },
-        { name: '李明', scheme: 2, time: '09:25' },
-        { name: '王伟', scheme: 2, time: '09:32' },
-        { name: '赵强', scheme: 2, time: '09:41' },
-        { name: '陈晨', scheme: 2, time: '09:55' },
-        { name: '周杰', scheme: 2, time: '10:02' },
-        { name: '刘洋', scheme: 1, time: '08:50' },
-        { name: '孙敏', scheme: 1, time: '09:12' },
-        { name: '吴昊', scheme: 3, time: '09:18' },
-        { name: '钱坤', scheme: 3, time: '09:45' },
-        { name: '郑华', scheme: 3, time: '10:08' }
-      ];
+      // Cloud Modal
+      const cloudModalBackdrop = document.getElementById('cloudModalBackdrop');
+      const btnCloseCloudModal = document.getElementById('btnCloseCloudModal');
+      const btnClearCloudConfig = document.getElementById('btnClearCloudConfig');
+      const btnSaveCloudConfig = document.getElementById('btnSaveCloudConfig');
+      const cloudModalFeedback = document.getElementById('cloudModalFeedback');
+      const lcAppIdInput = document.getElementById('lcAppIdInput');
+      const lcAppKeyInput = document.getElementById('lcAppKeyInput');
+      const lcServerUrlInput = document.getElementById('lcServerUrlInput');
+
+      const STORAGE_KEY = 'tw03_poll_votes_real_v2';
+      const LC_CONFIG_KEY = 'tw03_leancloud_config_v1';
+
+      // Purge old mock data from previous version if present
+      try {
+        localStorage.removeItem('tw03_poll_votes_records_v1');
+      } catch (_) {}
+
+      // REAL DATA: Strict zero mock records. Starts purely at 0.
+      const DEFAULT_RECORDS = [];
 
       function loadPollRecords() {
         try {
@@ -932,11 +988,139 @@
 
       let pollRecords = loadPollRecords();
 
+      // LeanCloud Credentials
+      function getLeanCloudConfig() {
+        try {
+          const raw = localStorage.getItem(LC_CONFIG_KEY);
+          if (raw) return JSON.parse(raw);
+        } catch (_) {}
+        return null;
+      }
+
+      function saveLeanCloudConfig(cfg) {
+        try {
+          if (!cfg) {
+            localStorage.removeItem(LC_CONFIG_KEY);
+          } else {
+            localStorage.setItem(LC_CONFIG_KEY, JSON.stringify(cfg));
+          }
+        } catch (_) {}
+      }
+
+      function updateCloudStatusUI(status, info) {
+        btnOpenCloudModal.className = 'poll-cloud-status-btn ' + status;
+        if (status === 'connected') {
+          cloudStatusText.textContent = info ? `云端同步 (${info}票)` : '云端同步';
+          btnOpenCloudModal.title = '已连接 LeanCloud 云端数据库 (实时多端同步)';
+        } else if (status === 'syncing') {
+          cloudStatusText.textContent = '同步中...';
+        } else if (status === 'error') {
+          cloudStatusText.textContent = '同步异常';
+          btnOpenCloudModal.title = info ? `云端连接异常: ${info}` : '云端连接异常，点击检查配置';
+        } else {
+          cloudStatusText.textContent = '云端配置';
+          btnOpenCloudModal.title = '当前为本地真实模式，点击配置 LeanCloud 实现多设备实时同步';
+        }
+      }
+
+      let isFetchingCloud = false;
+      async function fetchCloudVotes(isManual = false) {
+        const cfg = getLeanCloudConfig();
+        if (!cfg || !cfg.appId || !cfg.appKey || !cfg.serverURL) {
+          updateCloudStatusUI('local');
+          return null;
+        }
+
+        if (isFetchingCloud) return;
+        isFetchingCloud = true;
+        updateCloudStatusUI('syncing');
+
+        if (btnRefreshPoll) {
+          btnRefreshPoll.classList.add('spinning');
+        }
+
+        const cleanUrl = cfg.serverURL.trim().replace(/\/+$/, '');
+        const endpoint = `${cleanUrl}/1.1/classes/TW03Vote?order=-createdAt&limit=500`;
+
+        try {
+          const resp = await fetch(endpoint, {
+            method: 'GET',
+            headers: {
+              'X-LC-Id': cfg.appId.trim(),
+              'X-LC-Key': cfg.appKey.trim(),
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (!resp.ok) {
+            const errData = await resp.json().catch(() => ({}));
+            throw new Error(errData.error || `HTTP ${resp.status}`);
+          }
+
+          const data = await resp.json();
+          const remoteRecords = (data.results || []).map(item => {
+            let t = item.time;
+            if (!t && item.createdAt) {
+              const d = new Date(item.createdAt);
+              t = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+            }
+            return {
+              name: item.name || '匿名',
+              scheme: Number(item.scheme) || 1,
+              time: t || '',
+              objectId: item.objectId,
+              createdAt: item.createdAt
+            };
+          });
+
+          pollRecords = remoteRecords;
+          savePollRecords(pollRecords);
+          renderPollUI();
+          updateCloudStatusUI('connected', pollRecords.length);
+
+          if (isManual) {
+            showFeedback(`✅ 已同步最新云端数据，共 ${pollRecords.length} 票`, false);
+          }
+          return pollRecords;
+        } catch (err) {
+          console.warn('LeanCloud query error:', err);
+          updateCloudStatusUI('error', err.message);
+          if (isManual) {
+            showFeedback(`⚠️ 云端同步失败: ${err.message}`, true);
+          }
+          return null;
+        } finally {
+          isFetchingCloud = false;
+          if (btnRefreshPoll) {
+            setTimeout(() => btnRefreshPoll.classList.remove('spinning'), 400);
+          }
+        }
+      }
+
+      let autoSyncTimer = null;
+      function startAutoSync() {
+        stopAutoSync();
+        fetchCloudVotes();
+        autoSyncTimer = setInterval(() => {
+          if (pollDrawer.classList.contains('open')) {
+            fetchCloudVotes();
+          }
+        }, 15000);
+      }
+
+      function stopAutoSync() {
+        if (autoSyncTimer) {
+          clearInterval(autoSyncTimer);
+          autoSyncTimer = null;
+        }
+      }
+
       function openPollDrawer() {
         showHeader();
         pollDrawer.classList.add('open');
         pollBackdrop.classList.add('open');
         renderPollUI();
+        startAutoSync();
         setTimeout(() => voterNameInput.focus(), 320);
       }
 
@@ -944,6 +1128,7 @@
         pollDrawer.classList.remove('open');
         pollBackdrop.classList.remove('open');
         hideFeedback();
+        stopAutoSync();
         resetHideTimer();
       }
 
@@ -992,14 +1177,14 @@
 
         // Render records list
         if (pollRecords.length === 0) {
-          pollRecordsList.innerHTML = '<div class="poll-empty-state">暂无投票记录，快来投出第一票吧~</div>';
+          pollRecordsList.innerHTML = '<div class="poll-empty-state">暂无真实投票记录，欢迎投出第一票！</div>';
           return;
         }
 
         const schemeNames = { 1: '方案一', 2: '方案二', 3: '方案三' };
 
         pollRecordsList.innerHTML = pollRecords.map((r) => {
-          const initial = r.name.charAt(0);
+          const initial = (r.name || '?').charAt(0);
           const badgeClass = `scheme-${r.scheme}`;
           const schemeName = schemeNames[r.scheme] || `方案 ${r.scheme}`;
           return `
@@ -1022,7 +1207,7 @@
         return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
       }
 
-      function handleVoteSubmit() {
+      async function handleVoteSubmit() {
         const name = voterNameInput.value.trim();
         if (!name) {
           showFeedback('⚠️ 请输入您的姓名！', true);
@@ -1048,21 +1233,75 @@
           return;
         }
 
-        // Add new record
+        btnSubmitVote.disabled = true;
+        btnSubmitVote.classList.add('submitting');
+        btnSubmitVote.innerHTML = '<span>正在提交...</span>';
+
         const now = new Date();
         const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-        pollRecords.unshift({
+        const newRecord = {
           name: name,
           scheme: schemeVal,
           time: timeStr
-        });
+        };
 
-        savePollRecords(pollRecords);
-        renderPollUI();
-
+        const cfg = getLeanCloudConfig();
         const schemeNames = { 1: '方案一', 2: '方案二', 3: '方案三' };
-        showFeedback(`🎉 投票成功！感谢为「${schemeNames[schemeVal]}」投出宝贵的一票！`, false);
-        voterNameInput.value = '';
+
+        if (cfg && cfg.appId && cfg.appKey && cfg.serverURL) {
+          // Push to LeanCloud online database
+          try {
+            const cleanUrl = cfg.serverURL.trim().replace(/\/+$/, '');
+            const endpoint = `${cleanUrl}/1.1/classes/TW03Vote`;
+            const resp = await fetch(endpoint, {
+              method: 'POST',
+              headers: {
+                'X-LC-Id': cfg.appId.trim(),
+                'X-LC-Key': cfg.appKey.trim(),
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                name: name,
+                scheme: schemeVal,
+                time: timeStr,
+                clientTimestamp: Date.now()
+              })
+            });
+
+            if (!resp.ok) {
+              const err = await resp.json().catch(() => ({}));
+              throw new Error(err.error || `HTTP ${resp.status}`);
+            }
+
+            const resData = await resp.json();
+            newRecord.objectId = resData.objectId;
+            pollRecords.unshift(newRecord);
+            savePollRecords(pollRecords);
+            renderPollUI();
+            updateCloudStatusUI('connected', pollRecords.length);
+            showFeedback(`🎉 投票已实时同步至云端！感谢为「${schemeNames[schemeVal]}」投出宝贵一票！`, false);
+            voterNameInput.value = '';
+          } catch (err) {
+            console.warn('Post to LeanCloud failed:', err);
+            // Fallback save to local real cache
+            pollRecords.unshift(newRecord);
+            savePollRecords(pollRecords);
+            renderPollUI();
+            showFeedback(`⚠️ 云端提交失败(${err.message})，已先暂存本地真实数据`, true);
+            voterNameInput.value = '';
+          }
+        } else {
+          // Pure local real mode (starts clean at 0, no mock data)
+          pollRecords.unshift(newRecord);
+          savePollRecords(pollRecords);
+          renderPollUI();
+          showFeedback(`🎉 投票成功！(当前为本地真实模式，点击右上角「云端配置」可开启多端实时同步)`, false);
+          voterNameInput.value = '';
+        }
+
+        btnSubmitVote.disabled = false;
+        btnSubmitVote.classList.remove('submitting');
+        btnSubmitVote.innerHTML = '<span>提交投票</span>';
 
         try {
           if (window.sound && window.sound.playClick) {
@@ -1072,12 +1311,42 @@
       }
 
       function handleResetPoll() {
-        if (confirm('确定要清空当前的全部投票记录并重新计票吗？')) {
+        const cfg = getLeanCloudConfig();
+        const isCloud = Boolean(cfg && cfg.appId && cfg.appKey && cfg.serverURL);
+        const tip = isCloud
+          ? '确定要清空本地当前的投票缓存吗？\n（注：这只会清空本机的本地记录展示，如需清空在线云端的所有历史记录，请直接在 LeanCloud 控制台清空 TW03Vote 数据表）'
+          : '确定要清空当前的全部真实投票记录吗？';
+        if (confirm(tip)) {
           pollRecords = [];
           savePollRecords(pollRecords);
           renderPollUI();
-          showFeedback('已清空全部投票数据！', false);
+          showFeedback('已清空投票数据！', false);
         }
+      }
+
+      // Modal functions
+      function openCloudModal() {
+        const cfg = getLeanCloudConfig() || {};
+        lcAppIdInput.value = cfg.appId || '';
+        lcAppKeyInput.value = cfg.appKey || '';
+        lcServerUrlInput.value = cfg.serverURL || '';
+        hideModalStatus();
+        cloudModalBackdrop.style.display = 'flex';
+      }
+
+      function closeCloudModal() {
+        cloudModalBackdrop.style.display = 'none';
+        hideModalStatus();
+      }
+
+      function showModalStatus(msg, isError = false) {
+        cloudModalFeedback.textContent = msg;
+        cloudModalFeedback.className = 'poll-modal-feedback ' + (isError ? 'show-error' : 'show-success');
+      }
+
+      function hideModalStatus() {
+        cloudModalFeedback.textContent = '';
+        cloudModalFeedback.className = 'poll-modal-feedback';
       }
 
       // Event bindings for poll
@@ -1095,6 +1364,91 @@
       btnSubmitVote.addEventListener('click', handleVoteSubmit);
       btnResetPoll.addEventListener('click', handleResetPoll);
 
+      if (btnRefreshPoll) {
+        btnRefreshPoll.addEventListener('click', () => {
+          fetchCloudVotes(true);
+        });
+      }
+
+      if (btnOpenCloudModal) {
+        btnOpenCloudModal.addEventListener('click', openCloudModal);
+      }
+
+      if (btnCloseCloudModal) {
+        btnCloseCloudModal.addEventListener('click', closeCloudModal);
+      }
+
+      if (cloudModalBackdrop) {
+        cloudModalBackdrop.addEventListener('click', (e) => {
+          if (e.target === cloudModalBackdrop) {
+            closeCloudModal();
+          }
+        });
+      }
+
+      if (btnClearCloudConfig) {
+        btnClearCloudConfig.addEventListener('click', () => {
+          if (confirm('确定要清除已保存的 LeanCloud 云端配置吗？')) {
+            saveLeanCloudConfig(null);
+            lcAppIdInput.value = '';
+            lcAppKeyInput.value = '';
+            lcServerUrlInput.value = '';
+            updateCloudStatusUI('local');
+            showModalStatus('已清除云端配置，当前为本地真实模式。', false);
+          }
+        });
+      }
+
+      if (btnSaveCloudConfig) {
+        btnSaveCloudConfig.addEventListener('click', async () => {
+          const appId = lcAppIdInput.value.trim();
+          const appKey = lcAppKeyInput.value.trim();
+          let serverUrl = lcServerUrlInput.value.trim().replace(/\/+$/, '');
+
+          if (!appId || !appKey || !serverUrl) {
+            showModalStatus('⚠️ 请完整填写 App ID、App Key 和 REST API 域名', true);
+            return;
+          }
+
+          if (!serverUrl.startsWith('http://') && !serverUrl.startsWith('https://')) {
+            serverUrl = 'https://' + serverUrl;
+            lcServerUrlInput.value = serverUrl;
+          }
+
+          btnSaveCloudConfig.disabled = true;
+          btnSaveCloudConfig.textContent = '测试连接中...';
+          showModalStatus('正在测试连接 LeanCloud...', false);
+
+          try {
+            const resp = await fetch(`${serverUrl}/1.1/classes/TW03Vote?limit=1`, {
+              method: 'GET',
+              headers: {
+                'X-LC-Id': appId,
+                'X-LC-Key': appKey,
+                'Content-Type': 'application/json'
+              }
+            });
+
+            if (!resp.ok) {
+              const err = await resp.json().catch(() => ({}));
+              throw new Error(err.error || `HTTP ${resp.status}`);
+            }
+
+            saveLeanCloudConfig({ appId, appKey, serverURL: serverUrl });
+            showModalStatus('✅ 连接成功！配置已保存，正在拉取最新真实数据...', false);
+            setTimeout(() => {
+              closeCloudModal();
+              fetchCloudVotes(true);
+            }, 800);
+          } catch (e) {
+            showModalStatus(`❌ 连接失败: ${e.message}`, true);
+          } finally {
+            btnSaveCloudConfig.disabled = false;
+            btnSaveCloudConfig.textContent = '测试连接并保存';
+          }
+        });
+      }
+
       voterNameInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
           handleVoteSubmit();
@@ -1102,13 +1456,24 @@
       });
 
       window.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && pollDrawer.classList.contains('open')) {
-          closePollDrawer();
+        if (e.key === 'Escape') {
+          if (cloudModalBackdrop.style.display !== 'none') {
+            closeCloudModal();
+          } else if (pollDrawer.classList.contains('open')) {
+            closePollDrawer();
+          }
         }
       });
 
-      // Initial render of poll badge and statistics
+      // Initial check & render of poll data
       renderPollUI();
+      const initialCfg = getLeanCloudConfig();
+      if (initialCfg && initialCfg.appId && initialCfg.appKey && initialCfg.serverURL) {
+        updateCloudStatusUI('syncing');
+        fetchCloudVotes();
+      } else {
+        updateCloudStatusUI('local');
+      }
     });
   </script>
 </body>
