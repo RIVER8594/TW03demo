@@ -655,7 +655,7 @@ class Scheme1Controller {
     if (this.lockWarningTimer) clearTimeout(this.lockWarningTimer);
     this.lockWarningTimer = setTimeout(() => {
       lockIcon.classList.remove('lock-warning-blink');
-    }, 1800);
+    }, 2400);
   }
 
   wakeUp() {
@@ -1134,13 +1134,15 @@ class Scheme1Controller {
   handleBabyDown(e) {
     if (this.isSyntheticMouseEvent(e)) return;
     if (e) e.stopPropagation();
-    if (this.interceptLockedOrLowPower()) return;
+    if (this.isLowPower) { this.wakeUp(); return; }
+    this.resetLowPowerTimer();
+    if (this.power === 'off') return;
     if (this.editMode === 'reservation' || this.power === 'reserved') return;
     this.babyPressStart = Date.now();
     this.babyLongPressed = false;
     clearTimeout(this.babyPressTimer);
 
-    // Long press 2s triggers child lock
+    // Long press 2s triggers child lock (both lock and unlock)
     this.babyPressTimer = setTimeout(() => {
       this.babyLongPressed = true;
       this.toggleChildLock();
@@ -1168,7 +1170,11 @@ class Scheme1Controller {
 
     if (this.babyPressStart && Date.now() - this.babyPressStart < 2000) {
       this.babyPressStart = 0;
-      if (this.interceptLockedOrLowPower()) return;
+      if (this.childLocked) {
+        this.triggerLockWarning();
+        sound.playAlert();
+        return;
+      }
       if (this.editMode === 'reservation' || this.power === 'reserved') return;
       this.toggleBabyMode();
     }
@@ -1698,6 +1704,12 @@ class Scheme2Controller {
     this.compPressStartTime = 0;
     this.compLongPressed = false;
 
+    this.childLocked = false;
+    this.babyPressTimer = null;
+    this.babyPressStartTime = 0;
+    this.babyLongPressed = false;
+    this.lockWarningTimer = null;
+
     this.bindEvents();
     this.render();
   }
@@ -1766,10 +1778,18 @@ class Scheme2Controller {
       compBtn.addEventListener('touchcancel', cancelComp);
     }
 
-    // Baby Mode Key
+    // Baby Mode Key (Short click: toggle baby mode; Long press 2s: toggle child lock)
     const babyBtn = this.root.querySelector('.btn-baby-key');
     if (babyBtn) {
-      babyBtn.addEventListener('click', () => this.toggleBabyMode());
+      const startBaby = (e) => this.handleBabyPressStart(e);
+      const endBaby = (e) => this.handleBabyPressEnd(e);
+      const cancelBaby = () => this.handleBabyPressCancel();
+      babyBtn.addEventListener('mousedown', startBaby);
+      babyBtn.addEventListener('touchstart', startBaby, { passive: true });
+      babyBtn.addEventListener('mouseup', endBaby);
+      babyBtn.addEventListener('mouseleave', cancelBaby);
+      babyBtn.addEventListener('touchend', endBaby);
+      babyBtn.addEventListener('touchcancel', cancelBaby);
     }
 
     // Left dynamic [+] / [-] button
@@ -1834,6 +1854,10 @@ class Scheme2Controller {
     }
     clearTimeout(this.powerPressTimer);
     if (!this.powerLongPressed && this.powerPressStartTime && Date.now() - this.powerPressStartTime < 1200) {
+      if (this.power !== 'off' && this.interceptIfLocked()) {
+        this.powerPressStartTime = 0;
+        return;
+      }
       this.toggleStartPause();
     }
     this.powerPressStartTime = 0;
@@ -1846,6 +1870,7 @@ class Scheme2Controller {
       this.resetInactivityTimer();
     } else {
       this.power = 'off';
+      this.childLocked = false;
       sound.playPower(false);
       this.stopRunning();
       this.editMode = 'none';
@@ -1925,6 +1950,7 @@ class Scheme2Controller {
   handleCompPressStart(e) {
     if (this.isSyntheticMouseEvent(e)) return;
     if (this.power === 'off') return;
+    if (this.interceptIfLocked()) return;
     this.compPressStartTime = Date.now();
     this.compLongPressed = false;
     clearTimeout(this.compPressTimer);
@@ -2040,6 +2066,7 @@ class Scheme2Controller {
 
   enterEdit(type) {
     if (this.power === 'off') return;
+    if (this.interceptIfLocked()) return;
     if (this.editMode === 'reservation' || this.power === 'reserved') return;
     if (type === 'temp' && (this.babyMode || this.mode === 'dry')) return;
     sound.playClick();
@@ -2054,6 +2081,7 @@ class Scheme2Controller {
 
   setMode(mode) {
     if (this.power === 'off') return;
+    if (this.interceptIfLocked()) return;
     if (this.editMode === 'reservation' || this.power === 'reserved') return;
     if (this.mode === mode && this.power !== 'paused') return;
     sound.playMode();
@@ -2068,8 +2096,86 @@ class Scheme2Controller {
     this.render();
   }
 
+  // ==================== BABY MODE & CHILD LOCK ====================
+  handleBabyPressStart(e) {
+    if (this.isSyntheticMouseEvent(e)) return;
+    if (e) e.stopPropagation();
+    if (this.power === 'off') return;
+    if (this.editMode === 'reservation' || this.power === 'reserved') return;
+    this.babyPressStartTime = Date.now();
+    this.babyLongPressed = false;
+    clearTimeout(this.babyPressTimer);
+
+    // Long press 2s triggers child lock (both lock and unlock)
+    this.babyPressTimer = setTimeout(() => {
+      this.babyLongPressed = true;
+      this.toggleChildLock();
+    }, 2000);
+  }
+
+  handleBabyPressCancel() {
+    clearTimeout(this.babyPressTimer);
+    this.babyPressStartTime = 0;
+  }
+
+  handleBabyPressEnd(e) {
+    if (this.isSyntheticMouseEvent(e)) return;
+    if (e) {
+      e.stopPropagation();
+      if (e.cancelable && e.type && e.type.startsWith('touch')) {
+        e.preventDefault();
+      }
+    }
+    clearTimeout(this.babyPressTimer);
+    if (this.babyLongPressed) {
+      this.babyPressStartTime = 0;
+      return;
+    }
+
+    if (this.babyPressStartTime && Date.now() - this.babyPressStartTime < 2000) {
+      this.babyPressStartTime = 0;
+      if (this.childLocked) {
+        this.triggerLockWarning();
+        sound.playAlert();
+        return;
+      }
+      if (this.editMode === 'reservation' || this.power === 'reserved') return;
+      this.toggleBabyMode();
+    }
+    this.babyPressStartTime = 0;
+  }
+
+  toggleChildLock() {
+    this.childLocked = !this.childLocked;
+    sound.playAlert();
+    if (this.childLocked) {
+      this.editMode = 'none';
+    }
+    this.render();
+  }
+
+  triggerLockWarning() {
+    const lockIcon = this.root.querySelector('.s2-icon-lock');
+    if (!lockIcon) return;
+    lockIcon.classList.add('lock-warning-blink');
+    if (this.lockWarningTimer) clearTimeout(this.lockWarningTimer);
+    this.lockWarningTimer = setTimeout(() => {
+      lockIcon.classList.remove('lock-warning-blink');
+    }, 2400);
+  }
+
+  interceptIfLocked() {
+    if (this.childLocked) {
+      this.triggerLockWarning();
+      sound.playAlert();
+      return true;
+    }
+    return false;
+  }
+
   toggleBabyMode() {
     if (this.power === 'off') return;
+    if (this.interceptIfLocked()) return;
     if (this.editMode === 'reservation' || this.power === 'reserved') return;
     sound.playClick();
     if (this.power === 'paused') {
@@ -2089,6 +2195,7 @@ class Scheme2Controller {
 
   toggleUnit() {
     if (this.power === 'off') return;
+    if (this.interceptIfLocked()) return;
     sound.playClick();
     this.unit = this.unit === 'F' ? 'C' : 'F';
     this.render();
@@ -2096,12 +2203,14 @@ class Scheme2Controller {
 
   handleLeftAdjust() {
     if (this.power === 'off' || this.power === 'running' || this.power === 'paused' || this.power === 'reserved') return;
+    if (this.interceptIfLocked()) return;
     if (this.editMode === 'none') return;
     this.adjustParam(-1);
   }
 
   adjustParam(delta) {
     if (this.power === 'off' || this.power === 'running' || this.power === 'paused' || this.power === 'reserved') return;
+    if (this.interceptIfLocked()) return;
     if (this.editMode === 'none') return;
     sound.playClick();
     this.resetInactivityTimer();
@@ -2160,7 +2269,7 @@ class Scheme2Controller {
       btn.style.setProperty('pointer-events', 'auto', 'important');
     };
 
-    if (isOff || isRunning || this.power === 'reserved' || this.power === 'paused' || this.editMode === 'none') {
+    if (isOff || isRunning || this.power === 'reserved' || this.power === 'paused' || this.editMode === 'none' || this.childLocked) {
       hide(leftBtn);
       hide(rightBtn);
       return;
@@ -2354,6 +2463,7 @@ class Scheme2Controller {
     // Status icons
     const iconWifi = this.root.querySelector('.s2-icon-wifi');
     const iconAlarm = this.root.querySelector('.s2-icon-alarm');
+    const iconLock = this.root.querySelector('.s2-icon-lock');
     const iconIon = this.root.querySelector('.s2-icon-ion');
     const iconF = this.root.querySelector('.s2-icon-f');
     const iconC = this.root.querySelector('.s2-icon-c');
@@ -2362,6 +2472,7 @@ class Scheme2Controller {
       const showAlarm = this.editMode === 'reservation' || isReserved;
       iconAlarm.classList.toggle('active', showAlarm && !isOff);
     }
+    if (iconLock) iconLock.classList.toggle('active', Boolean(this.childLocked && !isOff));
     if (iconIon) iconIon.classList.toggle('active', isRunning && !isOff);
     if (iconF) iconF.classList.toggle('active', !isOff && this.unit === 'F');
     if (iconC) iconC.classList.toggle('active', !isOff && this.unit === 'C');
@@ -2378,6 +2489,7 @@ class Scheme2Controller {
         temp: this.currentTemp,
         time: this.currentTimeStr,
         babyMode: this.babyMode,
+        childLocked: this.childLocked,
         unit: this.unit
       });
     }
@@ -2486,6 +2598,10 @@ class Scheme3Controller {
     this.timePressStartTime = 0;
     this.timeLongPressed = false;
     this.childLocked = false;
+    this.babyPressTimer = null;
+    this.babyPressStartTime = 0;
+    this.babyLongPressed = false;
+    this.lockWarningTimer = null;
 
     this.bindEvents();
     this.render();
@@ -2541,10 +2657,18 @@ class Scheme3Controller {
       drySection.addEventListener('click', () => this.setMode('dry'));
     }
 
-    // Baby Center Icon in Pill
+    // Baby Center Icon in Pill (Short click: toggle baby mode; Long press 2s: toggle child lock)
     const babyCenter = this.root.querySelector('.pill-baby-center');
     if (babyCenter) {
-      babyCenter.addEventListener('click', () => this.toggleBabyMode());
+      const startBaby = (e) => this.handleBabyPressStart(e);
+      const endBaby = (e) => this.handleBabyPressEnd(e);
+      const cancelBaby = () => this.handleBabyPressCancel();
+      babyCenter.addEventListener('mousedown', startBaby);
+      babyCenter.addEventListener('touchstart', startBaby, { passive: true });
+      babyCenter.addEventListener('mouseup', endBaby);
+      babyCenter.addEventListener('mouseleave', cancelBaby);
+      babyCenter.addEventListener('touchend', endBaby);
+      babyCenter.addEventListener('touchcancel', cancelBaby);
     }
 
     // Independent Time Button (left) (Short click: time edit; Long press 2s: Reservation)
@@ -2617,6 +2741,10 @@ class Scheme3Controller {
     }
     clearTimeout(this.powerPressTimer);
     if (!this.powerLongPressed && this.powerPressStartTime && Date.now() - this.powerPressStartTime < 1200) {
+      if (this.power !== 'off' && this.interceptIfLocked()) {
+        this.powerPressStartTime = 0;
+        return;
+      }
       this.toggleStartPause();
     }
     this.powerPressStartTime = 0;
@@ -2629,6 +2757,7 @@ class Scheme3Controller {
       this.resetInactivityTimer();
     } else {
       this.power = 'off';
+      this.childLocked = false;
       sound.playPower(false);
       this.stopRunning();
       this.editMode = 'none';
@@ -2708,6 +2837,7 @@ class Scheme3Controller {
   handleTimePressStart(e) {
     if (this.isSyntheticMouseEvent(e)) return;
     if (this.power === 'off') return;
+    if (this.interceptIfLocked()) return;
     this.timePressStartTime = Date.now();
     this.timeLongPressed = false;
     clearTimeout(this.timePressTimer);
@@ -2797,6 +2927,7 @@ class Scheme3Controller {
 
   toggleTimeEdit() {
     if (this.power === 'off') return;
+    if (this.interceptIfLocked()) return;
     if (this.editMode === 'reservation' || this.power === 'reserved') return;
     sound.playClick();
     if (this.power === 'paused') {
@@ -2810,6 +2941,7 @@ class Scheme3Controller {
 
   toggleTempEdit() {
     if (this.power === 'off' || this.babyMode || this.mode === 'dry') return;
+    if (this.interceptIfLocked()) return;
     if (this.editMode === 'reservation' || this.power === 'reserved') return;
     sound.playClick();
     if (this.power === 'paused') {
@@ -2823,6 +2955,7 @@ class Scheme3Controller {
 
   setMode(mode) {
     if (this.power === 'off') return;
+    if (this.interceptIfLocked()) return;
     if (this.editMode === 'reservation' || this.power === 'reserved') return;
     if (this.mode === mode && this.power !== 'paused') return;
     sound.playMode();
@@ -2837,8 +2970,86 @@ class Scheme3Controller {
     this.render();
   }
 
+  // ==================== BABY MODE & CHILD LOCK ====================
+  handleBabyPressStart(e) {
+    if (this.isSyntheticMouseEvent(e)) return;
+    if (e) e.stopPropagation();
+    if (this.power === 'off') return;
+    if (this.editMode === 'reservation' || this.power === 'reserved') return;
+    this.babyPressStartTime = Date.now();
+    this.babyLongPressed = false;
+    clearTimeout(this.babyPressTimer);
+
+    // Long press 2s triggers child lock (both lock and unlock)
+    this.babyPressTimer = setTimeout(() => {
+      this.babyLongPressed = true;
+      this.toggleChildLock();
+    }, 2000);
+  }
+
+  handleBabyPressCancel() {
+    clearTimeout(this.babyPressTimer);
+    this.babyPressStartTime = 0;
+  }
+
+  handleBabyPressEnd(e) {
+    if (this.isSyntheticMouseEvent(e)) return;
+    if (e) {
+      e.stopPropagation();
+      if (e.cancelable && e.type && e.type.startsWith('touch')) {
+        e.preventDefault();
+      }
+    }
+    clearTimeout(this.babyPressTimer);
+    if (this.babyLongPressed) {
+      this.babyPressStartTime = 0;
+      return;
+    }
+
+    if (this.babyPressStartTime && Date.now() - this.babyPressStartTime < 2000) {
+      this.babyPressStartTime = 0;
+      if (this.childLocked) {
+        this.triggerLockWarning();
+        sound.playAlert();
+        return;
+      }
+      if (this.editMode === 'reservation' || this.power === 'reserved') return;
+      this.toggleBabyMode();
+    }
+    this.babyPressStartTime = 0;
+  }
+
+  toggleChildLock() {
+    this.childLocked = !this.childLocked;
+    sound.playAlert();
+    if (this.childLocked) {
+      this.editMode = 'none';
+    }
+    this.render();
+  }
+
+  triggerLockWarning() {
+    const lockIcon = this.root.querySelector('.s3-icon-lock');
+    if (!lockIcon) return;
+    lockIcon.classList.add('lock-warning-blink');
+    if (this.lockWarningTimer) clearTimeout(this.lockWarningTimer);
+    this.lockWarningTimer = setTimeout(() => {
+      lockIcon.classList.remove('lock-warning-blink');
+    }, 2400);
+  }
+
+  interceptIfLocked() {
+    if (this.childLocked) {
+      this.triggerLockWarning();
+      sound.playAlert();
+      return true;
+    }
+    return false;
+  }
+
   toggleBabyMode() {
     if (this.power === 'off') return;
+    if (this.interceptIfLocked()) return;
     if (this.editMode === 'reservation' || this.power === 'reserved') return;
     sound.playClick();
     if (this.power === 'paused') {
@@ -2858,6 +3069,7 @@ class Scheme3Controller {
 
   toggleUnit() {
     if (this.power === 'off') return;
+    if (this.interceptIfLocked()) return;
     sound.playClick();
     this.unit = this.unit === 'F' ? 'C' : 'F';
     this.render();
@@ -2865,6 +3077,7 @@ class Scheme3Controller {
 
   adjustParam(delta) {
     if (this.power === 'off' || this.power === 'running' || this.power === 'paused' || this.power === 'reserved') return;
+    if (this.interceptIfLocked()) return;
     if (this.editMode === 'none') return;
     sound.playClick();
     this.resetInactivityTimer();
@@ -2923,7 +3136,7 @@ class Scheme3Controller {
       btn.style.setProperty('pointer-events', 'auto', 'important');
     };
 
-    if (isOff || isRunning || this.power === 'reserved' || this.power === 'paused' || this.editMode === 'none') {
+    if (isOff || isRunning || this.power === 'reserved' || this.power === 'paused' || this.editMode === 'none' || this.childLocked) {
       hide(leftBtn);
       hide(rightBtn);
       return;
@@ -3149,6 +3362,7 @@ class Scheme3Controller {
         temp: this.currentTemp,
         time: this.currentTimeStr,
         babyMode: this.babyMode,
+        childLocked: this.childLocked,
         unit: this.unit
       });
     }
