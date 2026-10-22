@@ -460,13 +460,13 @@ body.is-embedded .device-wrapper {
 .s2-icon-f { left: 55.85%; top: 50.24%; }
 .s2-icon-c { left: 55.85%; top: 54.85%; }
 
-/* Scheme 3 Icon Positions */
-.s3-icon-wifi { left: 40.66%; top: 34.63%; }
-.s3-icon-alarm { left: 46.32%; top: 34.63%; }
-.s3-icon-lock { left: 52.21%; top: 34.63%; }
-.s3-icon-ion { left: 58.06%; top: 34.63%; }
-.s3-icon-f { left: 55.85%; top: 48.41%; }
-.s3-icon-c { left: 55.85%; top: 53.02%; }
+/* Scheme 3 Icon Positions (per UI Design: Wifi & Alarm on left, Ion & Lock on right) */
+.s3-icon-wifi { left: 40.64%; top: 37.40%; }
+.s3-icon-alarm { left: 40.64%; top: 41.80%; }
+.s3-icon-ion { left: 58.05%; top: 37.40%; }
+.s3-icon-lock { left: 58.05%; top: 41.80%; }
+.s3-icon-f { left: 56.50%; top: 48.41%; }
+.s3-icon-c { left: 56.50%; top: 52.60%; }
 
 /* ---------------- Scheme 1 Flame & Dots Indicator ---------------- */
 .s1-indicator-bar {

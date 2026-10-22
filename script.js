@@ -2835,6 +2835,7 @@ class Scheme3Controller {
     // Status icons
     const iconWifi = this.root.querySelector('.s3-icon-wifi');
     const iconAlarm = this.root.querySelector('.s3-icon-alarm');
+    const iconLock = this.root.querySelector('.s3-icon-lock');
     const iconIon = this.root.querySelector('.s3-icon-ion');
     const iconF = this.root.querySelector('.s3-icon-f');
     const iconC = this.root.querySelector('.s3-icon-c');
@@ -2843,6 +2844,7 @@ class Scheme3Controller {
       const showAlarm = this.editMode === 'reservation' || isReserved;
       iconAlarm.classList.toggle('active', showAlarm && !isOff);
     }
+    if (iconLock) iconLock.classList.toggle('active', this.childLocked && !isOff);
     const isOperating = (isRunning || isPaused);
     if (iconIon) iconIon.classList.toggle('active', isOperating && !isOff);
     if (iconF) iconF.classList.toggle('active', !isOff && this.unit === 'F');
