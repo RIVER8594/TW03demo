@@ -475,7 +475,8 @@ body.is-embedded .device-wrapper {
   top: 53.60%;
   width: 11.22%;
   height: 1.44%;
-  transform: translateX(-50%);
+  transform: translateX(-50%) scale(1.2);
+  transform-origin: center center;
   display: flex;
   align-items: center;
   justify-content: space-between;
