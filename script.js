@@ -1573,8 +1573,8 @@ class Scheme1Controller {
 
     if (iconWifi) iconWifi.classList.toggle('active', !isOff);
 
-    // Negative Ion Icon: lit up whenever device is operating (running / paused)
-    const isOperating = (this.power === 'running' || this.power === 'paused');
+    // Negative Ion Icon: lit up only when device is actively running (turns off when paused / stopped)
+    const isOperating = this.power === 'running';
     if (iconIon) {
       iconIon.classList.toggle('active', isOperating && !isOff);
     }
@@ -2362,8 +2362,7 @@ class Scheme2Controller {
       const showAlarm = this.editMode === 'reservation' || isReserved;
       iconAlarm.classList.toggle('active', showAlarm && !isOff);
     }
-    const isOperating = (isRunning || isPaused);
-    if (iconIon) iconIon.classList.toggle('active', isOperating && !isOff);
+    if (iconIon) iconIon.classList.toggle('active', isRunning && !isOff);
     if (iconF) iconF.classList.toggle('active', !isOff && this.unit === 'F');
     if (iconC) iconC.classList.toggle('active', !isOff && this.unit === 'C');
 
@@ -3134,8 +3133,7 @@ class Scheme3Controller {
       iconAlarm.classList.toggle('active', showAlarm && !isOff);
     }
     if (iconLock) iconLock.classList.toggle('active', Boolean(this.childLocked && !isOff));
-    const isOperating = (isRunning || isPaused);
-    if (iconIon) iconIon.classList.toggle('active', isOperating && !isOff);
+    if (iconIon) iconIon.classList.toggle('active', isRunning && !isOff);
     if (iconF) iconF.classList.toggle('active', !isOff && this.unit === 'F');
     if (iconC) iconC.classList.toggle('active', !isOff && this.unit === 'C');
 
