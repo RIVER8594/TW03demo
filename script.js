@@ -138,6 +138,263 @@ class SoundEngine {
 const sound = new SoundEngine();
 
 // ==========================================
+// 1.5. Web Serial Engine (Arduino Hardware USB Protocol)
+// ==========================================
+class TW03SerialManager {
+  constructor() {
+    this.port = null;
+    this.writer = null;
+    this.reader = null;
+    this.isConnected = false;
+    this.encoder = new TextEncoder();
+    this.decoder = new TextDecoder();
+    this.statusListeners = [];
+    this.baudRate = 9600;
+    this.writeQueue = Promise.resolve();
+    this.isSupported = typeof navigator !== 'undefined' && 'serial' in navigator;
+
+    if (this.isSupported) {
+      navigator.serial.addEventListener('disconnect', (e) => {
+        if (this.port && e.target === this.port) {
+          this.handleDisconnect('USB设备已拔出');
+        }
+      });
+      this.tryAutoConnect();
+    }
+  }
+
+  onStatusChange(fn) {
+    this.statusListeners.push(fn);
+  }
+
+  notifyStatus(connected, message) {
+    this.statusListeners.forEach(fn => {
+      try { fn(connected, message); } catch (e) { console.error(e); }
+    });
+    if (typeof document !== 'undefined') {
+      this.showToast(message);
+    }
+  }
+
+  showToast(msg) {
+    try {
+      let toast = document.getElementById('serialToast');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'serialToast';
+        toast.style.cssText = `
+          position: fixed;
+          bottom: 24px;
+          left: 50%;
+          transform: translateX(-50%) translateY(20px);
+          background: rgba(15, 23, 42, 0.92);
+          color: #ffffff;
+          padding: 10px 20px;
+          border-radius: 24px;
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          font-size: 14px;
+          font-weight: 500;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          z-index: 999999;
+          opacity: 0;
+          pointer-events: none;
+          transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+        `;
+        document.body.appendChild(toast);
+      }
+      toast.textContent = msg;
+      toast.style.opacity = '1';
+      toast.style.transform = 'translateX(-50%) translateY(0)';
+      clearTimeout(toast._timer);
+      toast._timer = setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(-50%) translateY(20px)';
+      }, 2500);
+    } catch (_) {}
+  }
+
+  async tryAutoConnect() {
+    if (!this.isSupported) return;
+    try {
+      const ports = await navigator.serial.getPorts();
+      if (ports && ports.length > 0) {
+        console.log('[Serial] 发现已授权的USB串口设备，尝试自动连接...');
+        await this.openPort(ports[0]);
+      }
+    } catch (err) {
+      console.warn('[Serial] 自动连接串口跳过:', err);
+    }
+  }
+
+  async connect() {
+    if (!this.isSupported) {
+      alert('当前浏览器环境不支持 Web Serial API。\n请使用 Google Chrome 或 Microsoft Edge 浏览器，并通过 HTTPS (如 GitHub Pages) 或本地服务访问。');
+      return false;
+    }
+    try {
+      const port = await navigator.serial.requestPort();
+      await this.openPort(port);
+      return true;
+    } catch (err) {
+      if (err.name !== 'NotFoundError') {
+        console.error('Serial connection error:', err);
+        alert('串口连接失败: ' + (err.message || err));
+      }
+      return false;
+    }
+  }
+
+  async openPort(port) {
+    try {
+      this.port = port;
+      await this.port.open({ baudRate: this.baudRate });
+      this.writer = this.port.writable.getWriter();
+      this.isConnected = true;
+      this.notifyStatus(true, '🟢 USB串口已连接 (9600波特率)');
+      this.readLoop();
+    } catch (err) {
+      console.error('Error opening port:', err);
+      this.isConnected = false;
+      this.port = null;
+      this.writer = null;
+      this.notifyStatus(false, '❌ 打开串口失败');
+      throw err;
+    }
+  }
+
+  async readLoop() {
+    while (this.port && this.port.readable && this.isConnected) {
+      try {
+        this.reader = this.port.readable.getReader();
+        while (true) {
+          const { value, done } = await this.reader.read();
+          if (done) break;
+          if (value) {
+            const text = this.decoder.decode(value);
+            console.log('[Arduino 串口响应]:', text);
+          }
+        }
+      } catch (err) {
+        console.warn('Serial read loop err:', err);
+      } finally {
+        if (this.reader) {
+          try { this.reader.releaseLock(); } catch (_) {}
+          this.reader = null;
+        }
+      }
+    }
+  }
+
+  async disconnect() {
+    this.isConnected = false;
+    try {
+      if (this.reader) {
+        await this.reader.cancel().catch(() => {});
+        try { this.reader.releaseLock(); } catch (_) {}
+        this.reader = null;
+      }
+      if (this.writer) {
+        await this.writer.close().catch(() => {});
+        try { this.writer.releaseLock(); } catch (_) {}
+        this.writer = null;
+      }
+      if (this.port) {
+        await this.port.close().catch(() => {});
+        this.port = null;
+      }
+    } catch (err) {
+      console.warn('Error during disconnect:', err);
+    }
+    this.notifyStatus(false, '🔌 USB串口已断开');
+  }
+
+  async handleDisconnect(reason) {
+    await this.disconnect();
+    this.notifyStatus(false, reason || '🔌 USB串口已断开');
+  }
+
+  async toggleConnect() {
+    if (this.isConnected) {
+      await this.disconnect();
+    } else {
+      await this.connect();
+    }
+  }
+
+  send(msg, val = '') {
+    // 兼容嵌入式TW03V1.0.ino代码:
+    // String receivedString = Serial.readStringUntil('\0');
+    // char* ptr = strtok(charArr, "||"); -> result.message = start / pause
+    const payloadStr = val !== '' ? `${msg}||${val}\0` : `${msg}\0`;
+
+    if (!this.isConnected || !this.port || !this.port.writable) {
+      console.log(`[Serial (未连接)] 模拟发送: ${payloadStr.replace('\0', '\\0')}`);
+      return Promise.resolve();
+    }
+
+    this.writeQueue = this.writeQueue.then(async () => {
+      try {
+        if (!this.writer) {
+          this.writer = this.port.writable.getWriter();
+        }
+        const data = this.encoder.encode(payloadStr);
+        await this.writer.write(data);
+        console.log(`[Serial 串口发送成功]: ${payloadStr.replace('\0', '\\0')}`);
+      } catch (err) {
+        console.error('[Serial 串口发送失败]:', err);
+        try {
+          if (this.writer) {
+            this.writer.releaseLock();
+            this.writer = null;
+          }
+        } catch (_) {}
+      }
+    });
+
+    return this.writeQueue;
+  }
+
+  bindButton(btn) {
+    if (!btn || btn._serialBound) return;
+    btn._serialBound = true;
+
+    const updateUI = (connected) => {
+      if (btn.classList.contains('nav-tab-serial')) {
+        btn.classList.toggle('connected', connected);
+        const iconSpan = btn.querySelector('.serial-icon');
+        const textSpan = btn.querySelector('.serial-text');
+        if (iconSpan) iconSpan.textContent = connected ? '🟢' : '🔌';
+        if (textSpan) textSpan.textContent = connected ? '串口已连接 (9600)' : '连接USB串口';
+        btn.title = connected ? 'Arduino串口已连接 (点击可断开)' : '点击连接Arduino USB串口 (9600波特率)';
+      } else {
+        btn.classList.toggle('serial-connected', connected);
+        btn.textContent = connected ? '🟢' : '🔌';
+        btn.title = connected ? 'Arduino串口已连接 (点击可断开)' : '点击连接Arduino USB串口 (9600波特率)';
+      }
+    };
+
+    this.onStatusChange(updateUI);
+    updateUI(this.isConnected);
+
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.toggleConnect();
+    });
+  }
+
+  bindButtons() {
+    const buttons = document.querySelectorAll('#btnSerial, .btn-serial, .nav-tab-serial');
+    buttons.forEach(btn => this.bindButton(btn));
+  }
+}
+
+const tw03Serial = new TW03SerialManager();
+window.tw03Serial = tw03Serial;
+
+// ==========================================
 // 2. Constants & Presets
 // ==========================================
 const HEAT_TIME_PRESETS = [
@@ -539,6 +796,7 @@ class Scheme1Controller {
   }
 
   startRunning() {
+    tw03Serial.send('start', '1');
     this.power = 'running';
     this.editMode = 'none';
     this.stopStandbyCarousel();
@@ -549,6 +807,7 @@ class Scheme1Controller {
   }
 
   pauseRunning() {
+    tw03Serial.send('pause', '0');
     this.power = 'paused';
     clearInterval(this.countdownTimer);
     clearInterval(this.dotInterval);
@@ -556,6 +815,7 @@ class Scheme1Controller {
   }
 
   resumeRunning() {
+    tw03Serial.send('start', '1');
     this.power = 'running';
     this.startCountdown();
     this.startDotAnimation();
@@ -563,6 +823,7 @@ class Scheme1Controller {
   }
 
   stopRunning() {
+    tw03Serial.send('pause', '0');
     clearInterval(this.countdownTimer);
     clearInterval(this.dotInterval);
   }
@@ -1619,6 +1880,7 @@ class Scheme2Controller {
   }
 
   startRunning() {
+    tw03Serial.send('start', '1');
     this.power = 'running';
     this.editMode = 'none';
     this.remainingSec = timeStrToMinutes(this.currentTimeStr) * 60;
@@ -1627,18 +1889,21 @@ class Scheme2Controller {
   }
 
   resumeRunning() {
+    tw03Serial.send('start', '1');
     this.power = 'running';
     this.startCountdown();
     this.render();
   }
 
   pauseRunning() {
+    tw03Serial.send('pause', '0');
     this.power = 'paused';
     clearInterval(this.countdownTimer);
     this.render();
   }
 
   stopRunning() {
+    tw03Serial.send('pause', '0');
     clearInterval(this.countdownTimer);
   }
 
@@ -2378,6 +2643,7 @@ class Scheme3Controller {
   }
 
   startRunning() {
+    tw03Serial.send('start', '1');
     this.power = 'running';
     this.editMode = 'none';
     this.remainingSec = timeStrToMinutes(this.currentTimeStr) * 60;
@@ -2386,18 +2652,21 @@ class Scheme3Controller {
   }
 
   resumeRunning() {
+    tw03Serial.send('start', '1');
     this.power = 'running';
     this.startCountdown();
     this.render();
   }
 
   pauseRunning() {
+    tw03Serial.send('pause', '0');
     this.power = 'paused';
     clearInterval(this.countdownTimer);
     this.render();
   }
 
   stopRunning() {
+    tw03Serial.send('pause', '0');
     clearInterval(this.countdownTimer);
   }
 
@@ -2924,6 +3193,17 @@ class Scheme3Controller {
 
 // Export globals
 window.SoundEngine = sound;
+window.TW03SerialManager = TW03SerialManager;
+window.tw03Serial = tw03Serial;
 window.Scheme1Controller = Scheme1Controller;
 window.Scheme2Controller = Scheme2Controller;
 window.Scheme3Controller = Scheme3Controller;
+
+// Auto-bind serial buttons on page load
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => tw03Serial.bindButtons());
+  } else {
+    tw03Serial.bindButtons();
+  }
+}

@@ -1319,6 +1319,48 @@ body.is-embedded .device-wrapper {
   font-weight: 700;
 }
 
+/* ==================== WEB SERIAL BUTTON STYLES ==================== */
+.nav-tab-serial {
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #38bdf8;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  background: rgba(56, 189, 248, 0.12);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 6px;
+}
+
+.nav-tab-serial:hover {
+  background: rgba(56, 189, 248, 0.25);
+  border-color: rgba(56, 189, 248, 0.7);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.35);
+  transform: translateY(-1px);
+}
+
+.nav-tab-serial.connected {
+  color: #00e676;
+  border-color: rgba(0, 230, 118, 0.6);
+  background: rgba(0, 230, 118, 0.16);
+  box-shadow: 0 0 14px rgba(0, 230, 118, 0.3);
+}
+
+.nav-tab-serial.connected:hover {
+  background: rgba(0, 230, 118, 0.28);
+  border-color: rgba(0, 230, 118, 0.9);
+}
+
+.btn-icon.serial-connected {
+  border-color: rgba(0, 230, 118, 0.8) !important;
+  background: rgba(0, 230, 118, 0.2) !important;
+  box-shadow: 0 0 10px rgba(0, 230, 118, 0.4);
+}
+
 /* Backdrop */
 .poll-backdrop {
   position: fixed;
