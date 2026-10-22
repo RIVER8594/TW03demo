@@ -1322,40 +1322,49 @@ body.is-embedded .device-wrapper {
   font-weight: 700;
 }
 
-/* ==================== WEB SERIAL BUTTON STYLES ==================== */
-.nav-tab-serial {
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #38bdf8;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  border: 1px solid rgba(56, 189, 248, 0.4);
-  background: rgba(56, 189, 248, 0.12);
+/* ==================== WEB SERIAL SUBTLE BUTTON STYLES ==================== */
+.header-right-tools {
+  position: absolute;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-left: 6px;
+  z-index: 10;
 }
 
-.nav-tab-serial:hover {
-  background: rgba(56, 189, 248, 0.25);
-  border-color: rgba(56, 189, 248, 0.7);
-  box-shadow: 0 0 12px rgba(56, 189, 248, 0.35);
-  transform: translateY(-1px);
+.btn-serial {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.35;
+  transition: all 0.25s ease;
+  user-select: none;
+  padding: 0;
+  box-sizing: border-box;
 }
 
-.nav-tab-serial.connected {
-  color: #00e676;
-  border-color: rgba(0, 230, 118, 0.6);
-  background: rgba(0, 230, 118, 0.16);
-  box-shadow: 0 0 14px rgba(0, 230, 118, 0.3);
+.btn-serial:hover {
+  opacity: 0.85;
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
 }
 
-.nav-tab-serial.connected:hover {
-  background: rgba(0, 230, 118, 0.28);
-  border-color: rgba(0, 230, 118, 0.9);
+.btn-serial.serial-connected {
+  opacity: 0.9;
+  background: rgba(0, 230, 118, 0.15) !important;
+  border-color: rgba(0, 230, 118, 0.5) !important;
+  box-shadow: 0 0 8px rgba(0, 230, 118, 0.3);
 }
 
 .btn-icon.serial-connected {

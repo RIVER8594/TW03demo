@@ -362,18 +362,9 @@ class TW03SerialManager {
     btn._serialBound = true;
 
     const updateUI = (connected) => {
-      if (btn.classList.contains('nav-tab-serial')) {
-        btn.classList.toggle('connected', connected);
-        const iconSpan = btn.querySelector('.serial-icon');
-        const textSpan = btn.querySelector('.serial-text');
-        if (iconSpan) iconSpan.textContent = connected ? '🟢' : '🔌';
-        if (textSpan) textSpan.textContent = connected ? '串口已连接 (9600)' : '连接USB串口';
-        btn.title = connected ? 'Arduino串口已连接 (点击可断开)' : '点击连接Arduino USB串口 (9600波特率)';
-      } else {
-        btn.classList.toggle('serial-connected', connected);
-        btn.textContent = connected ? '🟢' : '🔌';
-        btn.title = connected ? 'Arduino串口已连接 (点击可断开)' : '点击连接Arduino USB串口 (9600波特率)';
-      }
+      btn.classList.toggle('serial-connected', connected);
+      btn.textContent = connected ? '🟢' : '🔌';
+      btn.title = connected ? 'Arduino串口已连接 (点击可断开)' : '硬件调试: 点击连接 Arduino USB 串口 (9600波特率)';
     };
 
     this.onStatusChange(updateUI);
