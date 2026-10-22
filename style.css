@@ -1380,7 +1380,7 @@ body.is-embedded .device-wrapper {
 }
 
 .poll-cloud-status-btn {
-  display: flex;
+  display: none !important;
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
@@ -1747,6 +1747,7 @@ body.is-embedded .device-wrapper {
 
 /* Records List */
 .poll-reset-link {
+  display: none !important;
   background: transparent;
   border: none;
   font-size: 12px;
