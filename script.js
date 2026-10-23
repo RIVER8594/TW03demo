@@ -3269,7 +3269,7 @@ class Scheme3Controller {
         babyCenter.style.opacity = '0.25';
       } else {
         babyCenter.style.pointerEvents = 'auto';
-        babyCenter.style.opacity = this.babyMode ? '1' : '0.25';
+        babyCenter.style.opacity = this.babyMode ? '1' : '0.45';
       }
       const isBabyActive = this.babyMode && !isOff;
       babyCenter.classList.toggle('baby-active', isBabyActive);

@@ -932,14 +932,21 @@ body.is-embedded .device-wrapper {
   justify-content: center;
   cursor: pointer;
   z-index: 3;
+  opacity: 0.45;
+  transition: all 0.25s ease;
 }
 
 .pill-baby-center img {
   width: 68%;
   height: 68%;
   object-fit: contain;
-  opacity: 0.25;
+  opacity: 1;
   transition: all 0.25s ease;
+}
+
+.pill-baby-center:hover {
+  opacity: 1 !important;
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.85));
 }
 
 /* Time/Temp Composite Key (Left of Pill) */
@@ -1039,7 +1046,7 @@ body.is-embedded .device-wrapper {
 }
 
 .s3-time-btn.active, .s3-time-btn:hover {
-  opacity: 1;
+  opacity: 1 !important;
   filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.85));
 }
 
@@ -1056,7 +1063,7 @@ body.is-embedded .device-wrapper {
 }
 
 .s3-temp-btn.active, .s3-temp-btn:hover {
-  opacity: 1;
+  opacity: 1 !important;
   filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.85));
 }
 
