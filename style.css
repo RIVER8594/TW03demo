@@ -471,7 +471,7 @@ body.is-embedded .device-wrapper {
 .s3-icon-f { left: 56.50%; top: 48.41%; }
 .s3-icon-c { left: 56.50%; top: 52.60%; }
 
-/* ---------------- Scheme 1 Flame & Dots Indicator ---------------- */
+/* ---------------- Scheme 1 Flame & Dots Indicator (参考 方案一_加热指示灯 _ 加热动画 _ 中心向外循环.mp4) ---------------- */
 .s1-indicator-bar {
   position: absolute;
   left: 50%;
@@ -492,20 +492,8 @@ body.is-embedded .device-wrapper {
   border-radius: 50%;
   background: #ffffff;
   opacity: 0.15;
-  transition: all 0.25s ease;
-}
-
-.indicator-dot.active {
-  opacity: 1;
-  background: #fecb09;
-  box-shadow: 0 0 5px rgba(254, 203, 9, 0.8), 0 0 8px rgba(254, 203, 9, 0.4);
-}
-
-.indicator-dot.paused,
-.paused .indicator-dot {
-  opacity: 0.45 !important;
-  background: #ffffff !important;
-  box-shadow: 0 0 4px rgba(255, 255, 255, 0.35) !important;
+  transition: background 0.3s ease, opacity 0.3s ease;
+  will-change: opacity, box-shadow, transform;
 }
 
 .indicator-flame {
@@ -513,21 +501,118 @@ body.is-embedded .device-wrapper {
   height: clamp(10px, 0.90vw, 19px);
   color: #ffffff;
   opacity: 0.15;
-  transition: all 0.3s ease;
+  transition: color 0.3s ease, opacity 0.3s ease;
   display: block;
+  will-change: opacity, filter, transform;
 }
 
-.indicator-flame.active {
-  opacity: 1;
-  color: #fecb09;
-  filter: drop-shadow(0 0 5px rgba(254, 203, 9, 0.85)) drop-shadow(0 0 10px rgba(254, 203, 9, 0.4));
+/* 暂停状态：纯白半亮静止 */
+.indicator-dot.paused,
+.paused .indicator-dot,
+.s1-indicator-bar.paused .indicator-dot {
+  opacity: 0.45 !important;
+  background: #ffffff !important;
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.35) !important;
+  animation: none !important;
 }
 
 .indicator-flame.paused,
-.paused .indicator-flame {
+.paused .indicator-flame,
+.s1-indicator-bar.paused .indicator-flame {
   opacity: 0.45 !important;
   color: #ffffff !important;
   filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.4)) !important;
+  animation: none !important;
+}
+
+/* 运行加热动画：3.0s 周期，以中心火苗为起点，向外呈正弦波平滑流动扩散 */
+.s1-indicator-bar.running .indicator-flame,
+.indicator-flame.active {
+  animation: flameRipple 3.0s ease-in-out infinite;
+  animation-delay: 0s;
+}
+
+.s1-indicator-bar.running .indicator-dot,
+.indicator-dot.active {
+  animation: dotRipple 3.0s ease-in-out infinite;
+}
+
+/*
+  各点延迟计算（视频实测 3.0s 周期，波峰每向外传播一级延迟 0.375s）：
+  - 中心火苗 (距离0): 0.000s 达峰值 -> delay: 0s
+  - 距离1 (第4、6子元素，data-idx="3", "4"): 0.375s 达峰值 -> delay: -2.625s
+  - 距离2 (第3、7子元素，data-idx="2", "5"): 0.750s 达峰值 -> delay: -2.250s
+  - 距离3 (第2、8子元素，data-idx="1", "6"): 1.125s 达峰值 -> delay: -1.875s
+  - 距离4 最外侧 (第1、9子元素，data-idx="0", "7"): 1.500s 达峰值 -> delay: -1.500s
+*/
+.s1-indicator-bar.running .indicator-dot[data-idx="3"],
+.s1-indicator-bar.running .indicator-dot[data-idx="4"],
+.s1-indicator-bar .indicator-dot.active[data-idx="3"],
+.s1-indicator-bar .indicator-dot.active[data-idx="4"],
+.s1-indicator-bar.running .indicator-dot:nth-child(4),
+.s1-indicator-bar.running .indicator-dot:nth-child(6),
+.s1-indicator-bar .indicator-dot.active:nth-child(4),
+.s1-indicator-bar .indicator-dot.active:nth-child(6) {
+  animation-delay: -2.625s;
+}
+
+.s1-indicator-bar.running .indicator-dot[data-idx="2"],
+.s1-indicator-bar.running .indicator-dot[data-idx="5"],
+.s1-indicator-bar .indicator-dot.active[data-idx="2"],
+.s1-indicator-bar .indicator-dot.active[data-idx="5"],
+.s1-indicator-bar.running .indicator-dot:nth-child(3),
+.s1-indicator-bar.running .indicator-dot:nth-child(7),
+.s1-indicator-bar .indicator-dot.active:nth-child(3),
+.s1-indicator-bar .indicator-dot.active:nth-child(7) {
+  animation-delay: -2.25s;
+}
+
+.s1-indicator-bar.running .indicator-dot[data-idx="1"],
+.s1-indicator-bar.running .indicator-dot[data-idx="6"],
+.s1-indicator-bar .indicator-dot.active[data-idx="1"],
+.s1-indicator-bar .indicator-dot.active[data-idx="6"],
+.s1-indicator-bar.running .indicator-dot:nth-child(2),
+.s1-indicator-bar.running .indicator-dot:nth-child(8),
+.s1-indicator-bar .indicator-dot.active:nth-child(2),
+.s1-indicator-bar .indicator-dot.active:nth-child(8) {
+  animation-delay: -1.875s;
+}
+
+.s1-indicator-bar.running .indicator-dot[data-idx="0"],
+.s1-indicator-bar.running .indicator-dot[data-idx="7"],
+.s1-indicator-bar .indicator-dot.active[data-idx="0"],
+.s1-indicator-bar .indicator-dot.active[data-idx="7"],
+.s1-indicator-bar.running .indicator-dot:nth-child(1),
+.s1-indicator-bar.running .indicator-dot:nth-child(9),
+.s1-indicator-bar .indicator-dot.active:nth-child(1),
+.s1-indicator-bar .indicator-dot.active:nth-child(9) {
+  animation-delay: -1.50s;
+}
+
+@keyframes flameRipple {
+  0%, 100% {
+    opacity: 1;
+    color: #fecb09;
+    filter: drop-shadow(0 0 6px rgba(254, 203, 9, 0.95)) drop-shadow(0 0 12px rgba(254, 203, 9, 0.5));
+  }
+  50% {
+    opacity: 0.12;
+    color: #fecb09;
+    filter: none;
+  }
+}
+
+@keyframes dotRipple {
+  0%, 100% {
+    opacity: 1;
+    background: #fecb09;
+    box-shadow: 0 0 6px rgba(254, 203, 9, 0.95), 0 0 10px rgba(254, 203, 9, 0.45);
+  }
+  50% {
+    opacity: 0.12;
+    background: #fecb09;
+    box-shadow: none;
+  }
 }
 
 /* ---------------- Scheme 2 & 3 Yellow Divider Line & Sweeping Animation ---------------- */

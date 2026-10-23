@@ -742,6 +742,18 @@ class Scheme1Controller {
     this.powerPressStart = 0;
   }
 
+  toggleOnOff() {
+    this.togglePowerOnOff();
+  }
+
+  toggleStartPause() {
+    this.handleStartPauseClick();
+  }
+
+  cycleCompositeKey() {
+    this.handleCompClick();
+  }
+
   togglePowerOnOff() {
     if (this.power === 'off') {
       // Turn ON -> Standby
@@ -839,38 +851,26 @@ class Scheme1Controller {
 
   startDotAnimation() {
     clearInterval(this.dotInterval);
-    this.dotCycle = 0;
-    this.dotInterval = setInterval(() => {
-      if (this.power === 'running') {
-        this.dotCycle = (this.dotCycle + 1) % 5;
-        this.renderDots();
-      }
-    }, 380);
+    this.renderDots();
   }
 
   renderDots() {
     const dots = this.root.querySelectorAll('.indicator-dot');
     const flame = this.root.querySelector('.indicator-flame');
+    const bar = this.root.querySelector('.s1-indicator-bar');
     if (!flame) return;
 
     if (this.power === 'running') {
+      if (bar) bar.classList.add('running');
       flame.classList.remove('paused');
       flame.classList.add('active');
-      dots.forEach((dot, idx) => {
+      dots.forEach((dot) => {
         dot.classList.remove('paused');
-        let pairDist = 0;
-        if (idx <= 3) pairDist = 3 - idx;
-        else pairDist = idx - 4;
-        if (this.dotCycle === 0) {
-          dot.classList.toggle('active', false);
-        } else if (pairDist < this.dotCycle) {
-          dot.classList.toggle('active', true);
-        } else {
-          dot.classList.toggle('active', false);
-        }
+        dot.classList.add('active');
       });
     } else if (this.power === 'paused') {
-      // 暂停中状态，小火焰灯带是白色半亮
+      // 暂停中状态，小火焰灯带是白色半亮静止
+      if (bar) bar.classList.remove('running');
       flame.classList.remove('active');
       flame.classList.add('paused');
       dots.forEach(d => {
@@ -878,6 +878,8 @@ class Scheme1Controller {
         d.classList.add('paused');
       });
     } else {
+      // 待机或关机状态
+      if (bar) bar.classList.remove('running');
       flame.classList.remove('active', 'paused');
       dots.forEach(d => d.classList.remove('active', 'paused'));
     }
