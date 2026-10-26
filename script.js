@@ -325,13 +325,20 @@ class TW03SerialManager {
   }
 
   send(msg, val = '') {
-    // 兼容嵌入式TW03V1.0.ino代码:
+    // 1. 若蓝牙已连接，通过 BLE 发送给 ESP32-S3
+    if (window.tw03Ble && window.tw03Ble.isConnected) {
+      window.tw03Ble.send(msg, val);
+    }
+
+    // 2. 兼容嵌入式 TW03V1.0.ino 代码协议:
     // String receivedString = Serial.readStringUntil('\0');
     // char* ptr = strtok(charArr, "||"); -> result.message = start / pause
     const payloadStr = val !== '' ? `${msg}||${val}\0` : `${msg}\0`;
 
     if (!this.isConnected || !this.port || !this.port.writable) {
-      console.log(`[Serial (未连接)] 模拟发送: ${payloadStr.replace('\0', '\\0')}`);
+      if (!window.tw03Ble || !window.tw03Ble.isConnected) {
+        console.log(`[硬件控制 (未连接)] 模拟发送: ${payloadStr.replace('\0', '\\0')}`);
+      }
       return Promise.resolve();
     }
 
@@ -364,7 +371,7 @@ class TW03SerialManager {
     const updateUI = (connected) => {
       btn.classList.toggle('serial-connected', connected);
       btn.textContent = connected ? '🟢' : '🔌';
-      btn.title = connected ? 'Arduino串口已连接 (点击可断开)' : '硬件调试: 点击连接 Arduino USB 串口 (9600波特率)';
+      btn.title = connected ? 'USB串口已连接 (点击可断开)' : '硬件调试: 点击连接 ESP32 / Arduino USB 串口';
     };
 
     this.onStatusChange(updateUI);
@@ -382,8 +389,226 @@ class TW03SerialManager {
   }
 }
 
+// ==========================================
+// 1.6. Web Bluetooth Engine (ESP32-S3 BLE GATT Protocol)
+// ==========================================
+const BLE_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+const BLE_RX_UUID = '6e400002-b5a3-f393-e0a9-e50e24dcca9e'; // Web -> ESP32 Write
+const BLE_TX_UUID = '6e400003-b5a3-f393-e0a9-e50e24dcca9e'; // ESP32 -> Web Notify
+
+class TW03BleManager {
+  constructor() {
+    this.device = null;
+    this.server = null;
+    this.rxCharacteristic = null;
+    this.txCharacteristic = null;
+    this.isConnected = false;
+    this.encoder = new TextEncoder();
+    this.decoder = new TextDecoder();
+    this.statusListeners = [];
+    this.isSupported = typeof navigator !== 'undefined' && 'bluetooth' in navigator;
+  }
+
+  onStatusChange(fn) {
+    this.statusListeners.push(fn);
+  }
+
+  notifyStatus(connected, message) {
+    this.statusListeners.forEach(fn => {
+      try { fn(connected, message); } catch (e) { console.error(e); }
+    });
+    if (typeof document !== 'undefined') {
+      this.showToast(message);
+    }
+  }
+
+  showToast(msg) {
+    try {
+      let toast = document.getElementById('bleToast');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'bleToast';
+        toast.style.cssText = `
+          position: fixed;
+          bottom: 24px;
+          left: 50%;
+          transform: translateX(-50%) translateY(20px);
+          background: rgba(15, 23, 42, 0.94);
+          color: #38bdf8;
+          padding: 10px 22px;
+          border-radius: 24px;
+          border: 1px solid rgba(56, 189, 248, 0.45);
+          font-size: 14px;
+          font-weight: 500;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 15px rgba(56, 189, 248, 0.25);
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          z-index: 999999;
+          opacity: 0;
+          pointer-events: none;
+          transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+        `;
+        document.body.appendChild(toast);
+      }
+      toast.textContent = msg;
+      toast.style.opacity = '1';
+      toast.style.transform = 'translateX(-50%) translateY(0)';
+      clearTimeout(toast._timer);
+      toast._timer = setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(-50%) translateY(20px)';
+      }, 2800);
+    } catch (_) {}
+  }
+
+  async connect() {
+    if (typeof window !== 'undefined' && !window.isSecureContext) {
+      alert('Web Bluetooth 需要安全环境，无法在 file:// 下使用。\n请用 http://localhost:8080/index.html 或 HTTPS 地址打开 Demo。');
+      return false;
+    }
+    if (!this.isSupported) {
+      alert('当前浏览器不支持 Web Bluetooth。\n请使用电脑版 Chrome / Edge（iPhone Safari 不支持）。');
+      return false;
+    }
+
+    try {
+      console.log('[BLE] 正在扫描 TW03 蓝牙设备...');
+      this.device = await navigator.bluetooth.requestDevice({
+        // 只显示本项目设备：完整固件为 TW03-S3，最小测试固件为 TW03-BLE-TEST。
+        // 连接后仍会通过 getPrimaryService 严格校验 NUS 服务 UUID。
+        filters: [{ namePrefix: 'TW03' }],
+        optionalServices: [BLE_SERVICE_UUID]
+      });
+
+      this.device.addEventListener('gattserverdisconnected', () => {
+        if (this.isConnected) this.handleDisconnect('📶 ESP32-S3 蓝牙已断开');
+      });
+
+      console.log('[BLE] 正在连接 GATT 服务...');
+      this.server = await this.device.gatt.connect();
+      const service = await this.server.getPrimaryService(BLE_SERVICE_UUID);
+      this.rxCharacteristic = await service.getCharacteristic(BLE_RX_UUID);
+
+      try {
+        this.txCharacteristic = await service.getCharacteristic(BLE_TX_UUID);
+        await this.txCharacteristic.startNotifications();
+        this.txCharacteristic.addEventListener('characteristicvaluechanged', (event) => {
+          const str = this.decoder.decode(event.target.value);
+          console.log('[ESP32-S3 回执]:', str);
+          this.lastReply = str;
+        });
+      } catch (e) {
+        console.warn('[BLE] TX 回执通道订阅跳过:', e);
+      }
+
+      this.isConnected = true;
+      this.writeQueue = Promise.resolve();
+      this.notifyStatus(true, `🔵 已连接 ${this.device.name || 'ESP32-S3'}`);
+      this.send('status');
+      return true;
+    } catch (err) {
+      if (err.name !== 'NotFoundError') {
+        console.error('[BLE] 连接失败:', err);
+        alert('蓝牙连接失败: ' + (err.message || err));
+      }
+      try { if (this.device && this.device.gatt.connected) this.device.gatt.disconnect(); } catch (_) {}
+      this.isConnected = false;
+      return false;
+    }
+  }
+
+  async disconnect() {
+    this.isConnected = false;
+    try {
+      if (this.device && this.device.gatt.connected) {
+        this.device.gatt.disconnect();
+      }
+    } catch (err) {
+      console.warn('[BLE] 断开异常:', err);
+    }
+    this.device = null;
+    this.server = null;
+    this.rxCharacteristic = null;
+    this.txCharacteristic = null;
+    this.notifyStatus(false, '📶 ESP32-S3 蓝牙已断开');
+  }
+
+  async handleDisconnect(reason) {
+    this.isConnected = false;
+    this.device = null;
+    this.server = null;
+    this.rxCharacteristic = null;
+    this.txCharacteristic = null;
+    this.notifyStatus(false, reason || '📶 ESP32-S3 蓝牙已断开');
+  }
+
+  async toggleConnect() {
+    if (this.isConnected) {
+      await this.disconnect();
+    } else {
+      await this.connect();
+    }
+  }
+
+  send(msg, val = '') {
+    const payloadStr = val !== '' ? `${msg}||${val}\0` : `${msg}\0`;
+
+    if (!this.isConnected || !this.rxCharacteristic) {
+      return Promise.resolve(false);
+    }
+
+    // BLE 同一时间只能进行一个 GATT 操作，必须串行发送
+    if (!this.writeQueue) this.writeQueue = Promise.resolve();
+    this.writeQueue = this.writeQueue.then(async () => {
+      const ch = this.rxCharacteristic;
+      if (!this.isConnected || !ch) return false;
+      try {
+        const data = this.encoder.encode(payloadStr);
+        if (ch.writeValueWithResponse) {
+          await ch.writeValueWithResponse(data);
+        } else {
+          await ch.writeValue(data);
+        }
+        console.log(`[BLE 发送成功]: ${payloadStr.replace('\0', '\\0')}`);
+        return true;
+      } catch (err) {
+        console.error('[BLE 发送失败]:', err);
+        return false;
+      }
+    });
+    return this.writeQueue;
+  }
+
+  bindButton(btn) {
+    if (!btn || btn._bleBound) return;
+    btn._bleBound = true;
+
+    const updateUI = (connected) => {
+      btn.classList.toggle('ble-connected', connected);
+      btn.textContent = connected ? '🔵' : '📶';
+      btn.title = connected ? 'ESP32-S3 蓝牙已连接 (点击可断开)' : '硬件调试: 点击通过蓝牙无线连接 ESP32-S3 主板';
+    };
+
+    this.onStatusChange(updateUI);
+    updateUI(this.isConnected);
+
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.toggleConnect();
+    });
+  }
+
+  bindButtons() {
+    const buttons = document.querySelectorAll('#btnBle, .btn-ble');
+    buttons.forEach(btn => this.bindButton(btn));
+  }
+}
+
 const tw03Serial = new TW03SerialManager();
+const tw03Ble = new TW03BleManager();
 window.tw03Serial = tw03Serial;
+window.tw03Ble = tw03Ble;
 
 // ==========================================
 // 2. Constants & Presets
@@ -1628,6 +1853,9 @@ class Scheme1Controller {
       const str = formatCountdown(this.remainingSec);
       const [h, m] = str.split(':');
       d1 = h[0]; d2 = h[1]; d3 = m[0]; d4 = m[1];
+      if (this.remainingSec >= 3600 && d1 === '0') {
+        d1 = ' ';
+      }
     }
     // 2. Reservation setup
     else if (this.editMode === 'reservation') {
@@ -1635,6 +1863,9 @@ class Scheme1Controller {
       const str = this.currentReserveStr;
       const [h, m] = str.split(':');
       d1 = h[0]; d2 = h[1]; d3 = m[0]; d4 = m[1];
+      if (d1 === '0') {
+        d1 = ' ';
+      }
     }
     // 2b. Reservation countdown
     else if (this.power === 'reserved') {
@@ -1642,6 +1873,9 @@ class Scheme1Controller {
       const str = formatCountdown(this.remainingSec);
       const [h, m] = str.split(':');
       d1 = h[0]; d2 = h[1]; d3 = m[0]; d4 = m[1];
+      if (this.remainingSec >= 3600 && d1 === '0') {
+        d1 = ' ';
+      }
     }
     // 3. Time Editing or Standby Time display
     else if (this.editMode === 'time' || (this.editMode === 'none' && this.standbyParam === 'time')) {
@@ -1649,6 +1883,9 @@ class Scheme1Controller {
       const str = this.currentTimeStr;
       const [h, m] = str.split(':');
       d1 = h[0]; d2 = h[1]; d3 = m[0]; d4 = m[1];
+      if (d1 === '0') {
+        d1 = ' ';
+      }
     }
     // 4. Temperature Editing or Standby Temp display
     else {
@@ -3427,16 +3664,22 @@ class Scheme3Controller {
 // Export globals
 window.SoundEngine = sound;
 window.TW03SerialManager = TW03SerialManager;
+window.TW03BleManager = TW03BleManager;
 window.tw03Serial = tw03Serial;
+window.tw03Ble = tw03Ble;
 window.Scheme1Controller = Scheme1Controller;
 window.Scheme2Controller = Scheme2Controller;
 window.Scheme3Controller = Scheme3Controller;
 
-// Auto-bind serial buttons on page load
+// Auto-bind hardware buttons on page load
 if (typeof document !== 'undefined') {
+  const initHardwareButtons = () => {
+    if (window.tw03Ble) window.tw03Ble.bindButtons();
+    if (window.tw03Serial) window.tw03Serial.bindButtons();
+  };
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => tw03Serial.bindButtons());
+    document.addEventListener('DOMContentLoaded', initHardwareButtons);
   } else {
-    tw03Serial.bindButtons();
+    initHardwareButtons();
   }
 }
