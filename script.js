@@ -1942,6 +1942,8 @@ class Scheme2Controller {
     this.compPressTimer = null;
     this.compPressStartTime = 0;
     this.compLongPressed = false;
+    this.heatPressTimer = null;
+    this.heatLongPressed = false;
 
     this.childLocked = false;
     this.babyPressTimer = null;
@@ -1994,7 +1996,15 @@ class Scheme2Controller {
     // Heat Pill Section
     const heatSection = this.root.querySelector('.pill-heat');
     if (heatSection) {
-      heatSection.addEventListener('click', () => this.setMode('heat'));
+      const startHeat = (e) => this.handleHeatPressStart(e);
+      const endHeat = (e) => this.handleHeatPressEnd(e);
+      const cancelHeat = () => this.handleHeatPressCancel();
+      heatSection.addEventListener('mousedown', startHeat);
+      heatSection.addEventListener('touchstart', startHeat, { passive: true });
+      heatSection.addEventListener('mouseup', endHeat);
+      heatSection.addEventListener('touchend', endHeat);
+      heatSection.addEventListener('mouseleave', cancelHeat);
+      heatSection.addEventListener('touchcancel', cancelHeat);
     }
 
     // Dry Pill Section
@@ -2074,6 +2084,29 @@ class Scheme2Controller {
       }
     }
     return false;
+  }
+
+  handleHeatPressStart(e) {
+    if (this.isSyntheticMouseEvent(e)) return;
+    this.heatLongPressed = false;
+    clearTimeout(this.heatPressTimer);
+    this.heatPressTimer = setTimeout(() => {
+      this.heatLongPressed = true;
+      this.toggleUnit();
+    }, 2000);
+  }
+
+  handleHeatPressCancel() {
+    clearTimeout(this.heatPressTimer);
+    this.heatPressTimer = null;
+  }
+
+  handleHeatPressEnd(e) {
+    if (this.isSyntheticMouseEvent(e)) return;
+    clearTimeout(this.heatPressTimer);
+    this.heatPressTimer = null;
+    if (!this.heatLongPressed) this.setMode('heat');
+    this.heatLongPressed = false;
   }
 
   handlePowerPressStart(e) {
@@ -2836,6 +2869,8 @@ class Scheme3Controller {
     this.timePressTimer = null;
     this.timePressStartTime = 0;
     this.timeLongPressed = false;
+    this.heatPressTimer = null;
+    this.heatLongPressed = false;
     this.childLocked = false;
     this.babyPressTimer = null;
     this.babyPressStartTime = 0;
@@ -2887,7 +2922,15 @@ class Scheme3Controller {
     // Heat Pill Section
     const heatSection = this.root.querySelector('.pill-heat');
     if (heatSection) {
-      heatSection.addEventListener('click', () => this.setMode('heat'));
+      const startHeat = (e) => this.handleHeatPressStart(e);
+      const endHeat = (e) => this.handleHeatPressEnd(e);
+      const cancelHeat = () => this.handleHeatPressCancel();
+      heatSection.addEventListener('mousedown', startHeat);
+      heatSection.addEventListener('touchstart', startHeat, { passive: true });
+      heatSection.addEventListener('mouseup', endHeat);
+      heatSection.addEventListener('touchend', endHeat);
+      heatSection.addEventListener('mouseleave', cancelHeat);
+      heatSection.addEventListener('touchcancel', cancelHeat);
     }
 
     // Dry Pill Section
@@ -2961,6 +3004,29 @@ class Scheme3Controller {
       }
     }
     return false;
+  }
+
+  handleHeatPressStart(e) {
+    if (this.isSyntheticMouseEvent(e)) return;
+    this.heatLongPressed = false;
+    clearTimeout(this.heatPressTimer);
+    this.heatPressTimer = setTimeout(() => {
+      this.heatLongPressed = true;
+      this.toggleUnit();
+    }, 2000);
+  }
+
+  handleHeatPressCancel() {
+    clearTimeout(this.heatPressTimer);
+    this.heatPressTimer = null;
+  }
+
+  handleHeatPressEnd(e) {
+    if (this.isSyntheticMouseEvent(e)) return;
+    clearTimeout(this.heatPressTimer);
+    this.heatPressTimer = null;
+    if (!this.heatLongPressed) this.setMode('heat');
+    this.heatLongPressed = false;
   }
 
   handlePowerPressStart(e) {

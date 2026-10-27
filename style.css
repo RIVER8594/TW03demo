@@ -451,6 +451,13 @@ body.is-embedded .device-wrapper {
 .s1-icon-wifi { left: 40.04%; top: 43.13%; }
 .s1-icon-alarm { left: 40.04%; top: 46.03%; }
 .s1-icon-ion { left: 40.04%; top: 48.93%; }
+
+/* 负离子功能暂未启用：三个方案启动时统一隐藏图标 */
+.s1-icon-ion,
+.s2-icon-ion,
+.s3-icon-ion {
+  display: none !important;
+}
 .s1-icon-f { left: 58.64%; top: 43.13%; }
 .s1-icon-c { left: 58.64%; top: 46.03%; }
 .s1-icon-lock { left: 58.64%; top: 48.93%; }
