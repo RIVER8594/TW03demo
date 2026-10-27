@@ -2813,8 +2813,9 @@ class Scheme2Controller {
     const iconC = this.root.querySelector('.s2-icon-c');
     if (this.editMode === 'time' || this.editMode === 'reservation') {
       tempContainer.style.opacity = '0.4';
-      if (iconF) iconF.style.opacity = '0.4';
-      if (iconC) iconC.style.opacity = '0.4';
+      // 只让当前单位半亮；未选中的单位必须保持隐藏。
+      if (iconF) iconF.style.opacity = iconF.classList.contains('active') ? '0.4' : '0';
+      if (iconC) iconC.style.opacity = iconC.classList.contains('active') ? '0.4' : '0';
     } else {
       tempContainer.style.opacity = '';
       if (iconF) iconF.style.opacity = '';

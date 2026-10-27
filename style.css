@@ -440,6 +440,11 @@ body.is-embedded .device-wrapper {
   filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.8));
 }
 
+/* 未激活的状态图标始终隐藏，避免预约模式的半亮样式误显示两个单位。 */
+.status-icon:not(.active) {
+  opacity: 0 !important;
+}
+
 .s1-icon-ion.active,
 .s2-icon-ion.active,
 .s3-icon-ion.active {
